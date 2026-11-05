@@ -1,0 +1,11 @@
+{
+  "timezone": "Europe/London",
+  "windowMinutes": 15,
+  "reminders": [
+    { "time": "07:15", "days": ["Mon", "Tue", "Wed", "Thu", "Fri"], "title": "Pre-gym skincare", "body": "Rinse or Cetaphil, then sunscreen before the school drop.", "url": "./?start=1" },
+    { "time": "10:30", "days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], "title": "Morning skincare", "body": "Bath done? Time for your full morning routine.", "url": "./?start=1" },
+    { "time": "21:30", "days": ["Mon", "Thu"], "title": "Retinal night", "body": "Cetaphil, ANR, wait until bone-dry, then retinal.", "url": "./?start=1" },
+    { "time": "21:30", "days": ["Tue", "Wed", "Fri", "Sat", "Sun"], "title": "Rest night", "body": "Acid wash, Kojic toner, ANR, cream and body toner.", "url": "./?start=1" },
+    { "time": "10:00", "days": ["Sun"], "title": "Progress photos", "body": "Weekly photos in the same light and angle.", "url": "./?tab=photos" }
+  ]
+}
