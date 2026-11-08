@@ -213,7 +213,7 @@ function renderSettings(el) {
             ? '<p class="small">Turn these on for reminders and buddy nudges. If a buddy finishes a routine while you’ve missed a few days, you’ll get a friendly nudge, at most once every few days.</p>'
             : VAPID_PUBLIC_KEY
               ? '<p class="small">Turn these on to get reminders for your routines.</p>'
-              : '<p class="small">Push notifications need a sender. Setup steps are in the README.</p>'
+              : '<p class="small">Notifications aren’t set up for this app yet. Ask the person who set it up, or use Add to Calendar above.</p>'
         }
         ${!standalone ? '<p class="small warn">Open the app from your Home Screen to turn on notifications. iPhone only allows them for installed web apps.</p>' : ''}
         ${!pushSupported ? '<p class="small warn">This browser doesn’t support web push.</p>' : ''}
