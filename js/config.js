@@ -6,4 +6,4 @@ export const NUDGE_SERVER = '';
 
 // Your VAPID public key (from: npx web-push generate-vapid-keys).
 // Filled in here, nobody has to paste it on their phone.
-export const VAPID_PUBLIC_KEY = 'BLO6uYmJAPdz3XyJ0w2MbXFeju0bux_AfK8NmglMaXXD4mT6l-tbA_jMM1mMvP7wpTro_1iWf6_pCVz5un6PIjw';
+export const VAPID_PUBLIC_KEY = 'BKh5JZJfEgsc-xowzCVXw5q-5rLhnvy5B1QXpJwrwdd22acCTqzKeFJA3Gt2yMrV0uG1yhnyi2LvxVdHLkg7jR8';
