@@ -1,6 +1,8 @@
-import { state, save, todaysLogs, streak, allPhotos, putPhoto, resetAll, storageWorks } from './store.js';
+import { state, save, todaysLogs, streak, allPhotos, putPhoto, resetAll, storageWorks, initStore } from './store.js';
 import { ROUTINES, resolveSteps, suggestRoutine, routineLabel, isRetinalDay, setPlan } from './plan.js';
-import { autoUnlock, unlock, lockNow, MissingPlanError } from './lock.js';
+import { autoUnlock, unlock, lockNow } from './lock.js';
+import { checkin, registerPush, testPush, nudgesEnabled } from './nudge.js';
+import { VAPID_PUBLIC_KEY } from './config.js';
 import { getConditions, describeConditions, locateMe, searchPlace } from './weather.js';
 import { openRunner } from './runner.js';
 import { renderProgress } from './progress.js';
@@ -203,15 +205,22 @@ function renderSettings(el) {
       <p class="muted small">Simplest option: add these as repeating events with alerts to your iPhone calendar. Retinal and rest nights get their own titles.</p>
       <div class="row-actions"><button class="primary" data-ics>Add to Calendar</button></div>
 
-      <details class="advanced">
-        <summary>Push notifications from GitHub</summary>
-        <p class="small">Real push notifications need a sender. The repo includes a GitHub Action that sends them on the schedule in <code>reminders.json</code>. Setup steps are in the README.</p>
+      <div class="notify">
+        <h3 class="h3">Notifications</h3>
+        ${
+          nudgesEnabled()
+            ? '<p class="small">Turn these on for reminders and buddy nudges. If a buddy finishes a routine while you’ve missed a few days, you’ll get a friendly nudge, at most once every few days.</p>'
+            : '<p class="small">Push notifications need a sender. Setup steps are in the README.</p>'
+        }
         ${!standalone ? '<p class="small warn">Open the app from your Home Screen to turn on notifications. iPhone only allows them for installed web apps.</p>' : ''}
         ${!pushSupported ? '<p class="small warn">This browser doesn’t support web push.</p>' : ''}
-        <label class="field">VAPID public key <input type="text" value="${esc(s.vapidPublicKey)}" data-vapid autocomplete="off" spellcheck="false"></label>
-        <div class="row-actions"><button class="ghost" data-push ${pushSupported ? '' : 'disabled'}>Turn on notifications</button></div>
+        ${VAPID_PUBLIC_KEY ? '' : `<label class="field">VAPID public key <input type="text" value="${esc(s.vapidPublicKey)}" data-vapid autocomplete="off" spellcheck="false"></label>`}
+        <div class="row-actions">
+          <button class="ghost" data-push ${pushSupported ? '' : 'disabled'}>Turn on notifications</button>
+          ${nudgesEnabled() ? `<button class="ghost" data-testpush ${pushSupported ? '' : 'disabled'}>Send a test</button>` : ''}
+        </div>
         <div class="push-out"></div>
-      </details>
+      </div>
     </section>
 
     <section class="block">
@@ -222,9 +231,10 @@ function renderSettings(el) {
     </section>
 
     <section class="block">
-      <h2 class="h2">Privacy</h2>
-      <p class="muted small">Your routine is stored encrypted and only opens with your passphrase. Lock the app to ask for it again on this phone.</p>
-      <div class="row-actions"><button class="ghost" data-lock>Lock now</button></div>
+      <h2 class="h2">Account</h2>
+      <p class="small">Signed in as <strong>${esc(state.profileName || 'you')}</strong></p>
+      <p class="muted small">Your routine is encrypted and only opens with your passphrase. Your logs, photos and settings are kept separately from anyone else who uses this phone.</p>
+      <div class="row-actions"><button class="ghost" data-lock>Sign out</button></div>
     </section>
 
     <section class="block">
@@ -301,8 +311,16 @@ function renderSettings(el) {
   q('[data-photoday]').addEventListener('change', (e) => ((t.photoDay = +e.target.value), commit()));
   q('[data-ics]').addEventListener('click', () => download('skin-ritual-reminders.ics', buildIcs(), 'text/calendar'));
 
-  q('[data-vapid]').addEventListener('change', (e) => ((s.vapidPublicKey = e.target.value.trim()), commit()));
+  q('[data-vapid]')?.addEventListener('change', (e) => ((s.vapidPublicKey = e.target.value.trim()), commit()));
   q('[data-push]').addEventListener('click', () => enablePush(q('.push-out')));
+  q('[data-testpush]')?.addEventListener('click', async () => {
+    try {
+      await testPush();
+      toast('Test sent. It should arrive in a few seconds.');
+    } catch (err) {
+      toast(err.message === 'no subscription yet' ? 'Tap Turn on notifications first.' : `Couldn’t send: ${err.message}`);
+    }
+  });
 
   el.querySelectorAll('[data-wait]').forEach((sel) =>
     sel.addEventListener('change', () => {
@@ -330,9 +348,8 @@ function renderSettings(el) {
   q('[data-export]').addEventListener('click', () => exportBackup(q('[data-incphotos]').checked));
   q('[data-import]').addEventListener('change', (e) => importBackup(e.target.files[0]));
   q('[data-reset]').addEventListener('click', async () => {
-    if (!confirm('Erase all logs, notes, chat and settings on this phone? Photos are erased too.')) return;
+    if (!confirm('Erase your logs, notes, chat, photos and settings on this phone? Other people’s data is not affected.')) return;
     resetAll();
-    indexedDB.deleteDatabase('skin-ritual-photos');
     location.reload();
   });
 }
@@ -423,25 +440,41 @@ function b64ToBytes(b64) {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0));
 }
 
+const vapidKey = () => VAPID_PUBLIC_KEY || state.settings.vapidPublicKey;
+
+async function currentSubscription() {
+  const key = vapidKey();
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (sub && state.settings.pushKeyUsed !== key) {
+    await sub.unsubscribe();
+    sub = null;
+  }
+  sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(key) });
+  state.settings.pushKeyUsed = key;
+  save();
+  return sub;
+}
+
 async function enablePush(out) {
-  const key = state.settings.vapidPublicKey;
-  if (!key) return toast('Paste your VAPID public key first.');
+  if (!vapidKey()) return toast('Paste your VAPID public key first.');
   try {
     const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return toast('Notifications were not allowed.');
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if (sub && state.settings.pushKeyUsed !== key) {
-      await sub.unsubscribe();
-      sub = null;
-    }
-    sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(key) });
-    state.settings.pushKeyUsed = key;
-    save();
+    if (perm !== 'granted') return toast('Notifications were not allowed. You can allow them in iPhone Settings > Notifications.');
+    const sub = await currentSubscription();
     const json = JSON.stringify(sub);
-    out.innerHTML = `<p class="small">Notifications are on. Copy this and save it as the <code>PUSH_SUBSCRIPTION</code> secret in your GitHub repo.</p>
-      <textarea class="mono-box" rows="5" readonly>${esc(json)}</textarea>
-      <div class="row-actions"><button class="ghost" data-copy>Copy</button></div>`;
+    let buddy = false;
+    try {
+      buddy = await registerPush(sub.toJSON());
+    } catch (err) {
+      toast(`Couldn’t reach the nudge server: ${err.message}`);
+    }
+    out.innerHTML = `<p class="small"><strong>Notifications are on.</strong>${buddy ? ' Buddy nudges will reach this phone.' : ''}</p>
+      <details class="advanced"><summary>For GitHub reminders</summary>
+        <p class="small">To get the timed reminders from <code>reminders.json</code>, save this as the <code>PUSH_SUBSCRIPTION</code> secret in your GitHub repo.</p>
+        <textarea class="mono-box" rows="5" readonly>${esc(json)}</textarea>
+        <div class="row-actions"><button class="ghost" data-copy>Copy</button></div>
+      </details>`;
     out.querySelector('[data-copy]').addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(json);
@@ -453,6 +486,14 @@ async function enablePush(out) {
   } catch (err) {
     toast(`Couldn’t turn on notifications: ${err.message}`);
   }
+}
+
+// Keep the nudge server up to date with this phone's push address.
+async function refreshPush() {
+  try {
+    if (!nudgesEnabled() || !('PushManager' in window) || Notification.permission !== 'granted' || !vapidKey()) return;
+    await registerPush((await currentSubscription()).toJSON());
+  } catch {}
 }
 
 // ---------------- Backup ----------------
@@ -553,15 +594,21 @@ function storageWarning() {
 }
 document.addEventListener('storage-failed', storageWarning);
 
-function start(plan) {
+function start({ uid, name, plan }) {
+  initStore(uid);
+  if (name) state.profileName = name;
+  save();
+  applyPalette();
   setPlan(plan);
-  if (!storageWorks) storageWarning();
   unlocked = true;
+  if (!storageWorks) storageWarning();
   document.body.classList.remove('locked');
   $('#lock')?.remove();
   route();
   if (!state.setupDone) firstRun();
   else if (params.get('start') === '1') startRoutine();
+  checkin(false);
+  refreshPush();
 }
 
 function showLock(message = '') {
@@ -574,54 +621,43 @@ function showLock(message = '') {
     <form class="lock-card" autocomplete="on">
       <svg class="lock-drop" viewBox="0 0 120 140" aria-hidden="true"><path d="${DROP_PATH}"/></svg>
       <h1 class="display">Skin Ritual</h1>
-      <p class="lock-sub">Enter your passphrase to open your routine.</p>
-      <input class="visually-hidden" type="text" name="username" autocomplete="username" value="Skin Ritual" tabindex="-1" aria-hidden="true">
+      <p class="lock-sub">Sign in to open your routine.</p>
+      <label class="visually-hidden" for="who">Name</label>
+      <input id="who" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Name" required>
       <label class="visually-hidden" for="pass">Passphrase</label>
       <input id="pass" name="password" type="password" autocomplete="current-password" placeholder="Passphrase" required>
-      <label class="check"><input type="checkbox" data-remember checked> Stay unlocked on this phone</label>
-      <button class="start" type="submit"><svg viewBox="0 0 120 140" aria-hidden="true"><path d="${DROP_PATH}"/></svg>Unlock</button>
+      <label class="check"><input type="checkbox" data-remember checked> Stay signed in on this phone</label>
+      <button class="start" type="submit"><svg viewBox="0 0 120 140" aria-hidden="true"><path d="${DROP_PATH}"/></svg>Sign in</button>
       <p class="lock-err" role="alert">${message}</p>
     </form>`;
   document.body.appendChild(el);
   const form = el.querySelector('form');
+  const who = el.querySelector('#who');
   const input = el.querySelector('#pass');
   const err = el.querySelector('.lock-err');
   const btn = el.querySelector('button[type=submit]');
-  input.focus();
+  who.focus();
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     err.textContent = '';
     btn.disabled = true;
-    btn.lastChild.textContent = 'Unlocking…';
+    btn.lastChild.textContent = 'Signing in…';
     try {
-      const plan = await unlock(input.value, el.querySelector('[data-remember]').checked);
-      start(plan);
+      start(await unlock(who.value, input.value, el.querySelector('[data-remember]').checked));
     } catch (ex) {
       btn.disabled = false;
-      btn.lastChild.textContent = 'Unlock';
+      btn.lastChild.textContent = 'Sign in';
       err.textContent =
         ex.message === 'wrong'
-          ? 'That passphrase didn’t work. Try again.'
-          : ex instanceof MissingPlanError
-            ? 'No encrypted routine has been uploaded yet. Run node tools/encrypt-plan.mjs and push plan.enc.json.'
-            : 'Couldn’t load your routine. Check your connection and try again.';
+          ? 'That name and passphrase don’t match. Try again.'
+          : 'Couldn’t load your routine. Check your connection and try again.';
       input.select();
     }
   });
 }
 
-applyPalette();
-
 (async () => {
-  try {
-    const plan = await autoUnlock();
-    if (plan) return start(plan);
-    showLock();
-  } catch (e) {
-    showLock(
-      e instanceof MissingPlanError
-        ? 'No encrypted routine has been uploaded yet. Run node tools/encrypt-plan.mjs and push plan.enc.json.'
-        : ''
-    );
-  }
+  const session = await autoUnlock().catch(() => null);
+  if (session) start(session);
+  else showLock();
 })();

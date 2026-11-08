@@ -1,6 +1,7 @@
-// Unlocks the encrypted routine (plan.enc.json) with your passphrase.
-// AES-256-GCM, key derived with PBKDF2-SHA256. The derived key can be kept
-// on this phone (IndexedDB, non-extractable) so you don't retype it each time.
+// Sign-in for each user. Every user has their own encrypted routine at
+// plans/<user id>.enc.json, where the id is a hash of their login name, so the
+// repo doesn't reveal names. AES-256-GCM with a PBKDF2-SHA256 key from the passphrase.
+// "Stay unlocked" keeps the derived key on this phone (IndexedDB, non-extractable).
 
 const DB = 'skin-ritual-lock';
 
@@ -21,33 +22,32 @@ async function keyOp(mode, fn) {
     t.onerror = () => resolve(null);
   });
 }
-const getKey = () => keyOp('readonly', (s) => s.get('key')).catch(() => null);
-const putKey = (k) => keyOp('readwrite', (s) => s.put(k, 'key')).catch(() => null);
-const delKey = () => keyOp('readwrite', (s) => s.delete('key')).catch(() => null);
+const getSession = () => keyOp('readonly', (s) => s.get('session')).catch(() => null);
+const putSession = (v) => keyOp('readwrite', (s) => s.put(v, 'session')).catch(() => null);
+const delSession = () => keyOp('readwrite', (s) => s.delete('session')).catch(() => null);
 
 const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
-export class MissingPlanError extends Error {}
+// Same calculation as tools/encrypt-plan.mjs
+export async function userId(name) {
+  const data = new TextEncoder().encode('skin-ritual:' + name.trim().toLowerCase());
+  const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
+  return [...hash.slice(0, 10)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
-async function fetchBlob() {
+async function fetchBlob(uid) {
   let res;
   try {
-    res = await fetch('plan.enc.json', { cache: 'no-cache' });
+    res = await fetch(`plans/${uid}.enc.json`, { cache: 'no-cache' });
   } catch {
     throw new Error('offline');
   }
-  if (!res.ok) throw new MissingPlanError('plan.enc.json not found');
+  if (!res.ok) throw new Error('wrong'); // unknown name: same message as a wrong passphrase
   return res.json();
 }
 
 async function deriveKey(passphrase, blob) {
-  const base = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(passphrase.normalize('NFKC')),
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase.normalize('NFKC')), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
     { name: 'PBKDF2', salt: b64(blob.salt), iterations: blob.iter, hash: 'SHA-256' },
     base,
@@ -62,21 +62,21 @@ async function decrypt(key, blob) {
   return JSON.parse(new TextDecoder().decode(plain));
 }
 
-// Uses the key saved on this phone, if any. Returns the plan or null.
+// Signs back in with the session saved on this phone. Returns { uid, name, plan } or null.
 export async function autoUnlock() {
-  const key = await getKey();
-  if (!key) return null;
+  const s = await getSession();
+  if (!s?.key || !s.uid) return null;
   try {
-    return await decrypt(key, await fetchBlob());
+    return { uid: s.uid, name: s.name, plan: await decrypt(s.key, await fetchBlob(s.uid)) };
   } catch (e) {
-    if (e instanceof MissingPlanError) throw e;
-    if (e.message !== 'offline') await delKey(); // passphrase was changed
+    if (e.message !== 'offline') await delSession(); // passphrase changed or user removed
     return null;
   }
 }
 
-export async function unlock(passphrase, remember) {
-  const blob = await fetchBlob();
+export async function unlock(name, passphrase, remember) {
+  const uid = await userId(name);
+  const blob = await fetchBlob(uid);
   const key = await deriveKey(passphrase, blob);
   let plan;
   try {
@@ -84,10 +84,11 @@ export async function unlock(passphrase, remember) {
   } catch {
     throw new Error('wrong');
   }
-  if (remember) await putKey(key);
-  return plan;
+  const display = name.trim();
+  if (remember) await putSession({ uid, key, name: display });
+  return { uid, name: display, plan };
 }
 
 export async function lockNow() {
-  await delKey();
+  await delSession();
 }

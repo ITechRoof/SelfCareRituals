@@ -1,6 +1,7 @@
 import { state, save, dayStatus, streaks, completion, logsOn, setSlotDone } from './store.js';
 import { ROUTINES, routineLabel, isRetinalDay } from './plan.js';
 import { sheet, closeSheet } from './photos.js';
+import { checkin } from './nudge.js';
 import { esc, dateKey, parseKey, addDays, weekStart, fmtDate, fmtClock, MONTH_SHORT, DAY_SHORT, toast } from './util.js';
 
 const WEEKS = 16;
@@ -40,7 +41,7 @@ export function renderProgress(el) {
   const head = days
     .map((d) => {
       const k = dateKey(d);
-      return `<th scope="col" class="${k === todayKey ? 'today' : ''}">${DAY_SHORT[d.getDay()]}${isRetinalDay(d) ? '<span class="r" title="Retinal night">R</span>' : ''}</th>`;
+      return `<th scope="col" class="${k === todayKey ? 'today' : ''}">${DAY_SHORT[d.getDay()]}${isRetinalDay(d) ? '<span class="r" title="${esc(ROUTINES.retinal.name)}">${esc(ROUTINES.retinal.name[0])}</span>' : ''}</th>`;
     })
     .join('');
   const row = (slot, title) =>
@@ -102,8 +103,8 @@ export function renderProgress(el) {
       </div>
       <div class="heat-legend">
         <span><i class="key am"></i>Morning (top)</span>
-        <span><i class="key rest"></i>Rest night</span>
-        <span><i class="key retinal"></i>Retinal night</span>
+        <span><i class="key rest"></i>${esc(ROUTINES.rest.name)}</span>
+        <span><i class="key retinal"></i>${esc(ROUTINES.retinal.name)}</span>
       </div>
     </section>
 
@@ -163,6 +164,7 @@ function toggle(key, slot, after) {
     if (guided && !confirm('This was logged by a guided routine. Remove it?')) return;
   }
   setSlotDone(key, slot, !on);
+  checkin(!on && key === dateKey());
   toast(on ? 'Unticked' : 'Ticked');
   after();
 }
@@ -196,6 +198,7 @@ function openDay(key, after) {
           }
         }
         setSlotDone(key, i.dataset.slot, want);
+        checkin(want && key === dateKey());
       }
     })
   );

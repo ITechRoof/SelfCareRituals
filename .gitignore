@@ -1,4 +1,7 @@
-# Your routine in plain text. Never upload this.
+# Everyone's routines in plain text. Never upload these.
+private/
 plan.private.mjs
 .DS_Store
 node_modules/
+worker/.wrangler/
+worker/node_modules/

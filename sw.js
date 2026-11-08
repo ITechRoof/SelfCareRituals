@@ -1,5 +1,5 @@
 // Bump VERSION whenever you change any file so phones pick up the update.
-const VERSION = 'skin-ritual-v6';
+const VERSION = 'skin-ritual-v8';
 const SHELL = [
   './',
   './index.html',
@@ -16,7 +16,8 @@ const SHELL = [
   './js/photos.js',
   './js/ask.js',
   './js/lock.js',
-  './plan.enc.json',
+  './js/nudge.js',
+  './js/config.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
@@ -42,8 +43,8 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
-  // The encrypted routine: always try the network first so updates apply at once.
-  if (url.pathname.endsWith('/plan.enc.json')) {
+  // Encrypted routines: always try the network first so updates apply at once.
+  if (url.pathname.includes('/plans/')) {
     e.respondWith(
       fetch(e.request)
         .then((res) => {

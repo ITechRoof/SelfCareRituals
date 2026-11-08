@@ -19,7 +19,9 @@
   <script>
     // Apply the chosen theme before anything draws, so there's no flash of the wrong colours.
     try {
-      var p = JSON.parse(localStorage.getItem('skin-ritual:v1') || '{}').settings || {};
+      var u = localStorage.getItem('skin-ritual:last-user');
+      var raw = (u && localStorage.getItem('skin-ritual:v2:' + u)) || localStorage.getItem('skin-ritual:v1');
+      var p = JSON.parse(raw || '{}').settings || {};
       if (p.palette && p.palette !== 'original') document.documentElement.dataset.palette = p.palette;
     } catch (e) {}
   </script>

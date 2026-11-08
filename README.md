@@ -9,6 +9,7 @@ It includes:
 - **Drying timers between steps:** tap Done and a countdown starts. It chimes and moves to the next step by itself. Wait times come from your plan and can be adjusted in Settings > Drying times.
 - **Morning and evening tracking:** each day has a morning tick (your main post-gym routine), an evening tick (retinal or rest night), and a pre-gym tick on gym days. A day counts towards your streak when both morning and evening are done. Routines you did without the app can be ticked by hand. The heatmap splits each day into a morning half and an evening half.
 - **Weekly skin notes.**
+- **Buddy nudges:** a friendly push when a buddy logs a routine and you've missed a few days (section 7).
 - **Five colour themes:** Twilight, Soft pastel, Warm luxe, Fresh spa and Bold jewel, each with a dark-mode version. Choose in Settings > Theme.
 - **Progress photos:** photos per area with a faint overlay of the last shot so angles match, plus a before/after slider.
 - **AI chat:** an Ask tab that knows your plan, today's weather and your recent log (uses your Anthropic API key).
@@ -89,48 +90,122 @@ Some things to know about push:
 
 The chat is given your full plan, today's weather and season, the routine that's due, your last 14 days of logs, and this week's skin notes.
 
-## 5. Your routine is private
+## 5. People, passwords and routines
 
-The repo is public, but your routine isn't readable in it:
+Each person signs in with a **name** and their own **passphrase**, and gets their own routine:
 
-- **Encrypted routine:** your products, order, portions and drying times are stored only in `plan.enc.json`, encrypted with AES-256. It's unreadable without your passphrase.
-- **Lock screen:** the app asks for the passphrase before showing anything. Tick "Stay unlocked on this phone" and you'll only enter it once. iPhone can also save it in Passwords and offer it with Face ID.
-- **Private source file:** the readable version, `plan.private.mjs`, lives only on your Mac. `.gitignore` stops git from uploading it.
-- **Your logs, notes and photos** never leave your phone at all.
+- **Encrypted routines:** each routine is stored encrypted in `plans/`, one file per person. The file names are scrambled codes, so the repo doesn't show who uses the app.
+- **Private source files:** the readable routines live in `private/`, one file per person, named after their login name. `private/` is never uploaded (see `.gitignore`).
+- **Separate data on each phone:** logs, notes, photos, chat, settings and theme are kept per person, even if two people share a phone.
+- **Hidden accounts:** a wrong name and a wrong passphrase give the same message, so nobody can find out who has an account.
 
-### First-time setup, and whenever you change your routine
+You need Node.js on your Mac (`node -v`; install with `brew install node`).
 
-You need Node.js on your Mac. Check with `node -v`, or install it with `brew install node`.
+### Set up your own login
 
-1. Edit `plan.private.mjs` if you want to change anything. Each step looks like:
-   ```js
-   {
-     id: 'pm-serum',                      // unique, never reuse
-     product: 'Serum name',
-     area: 'Face & neck',
-     portion: { all: '1 dropper' },       // or { summer: '…', winter: '…' }
-     how: 'How to apply it',
-     note: { winter: 'Winter-only tip' },
-     wait: { summer: 180, winter: 300, label: 'Let it dry' },  // seconds
-   }
-   ```
-2. Encrypt it:
+```bash
+node tools/encrypt-plan.mjs me
+git add plans && git commit -m "My routine" && git push
+```
+
+`me` is your login name. To use a different name, rename the file first: `mv private/me.mjs private/kiru.mjs`, then run `node tools/encrypt-plan.mjs kiru`.
+
+### Add another person
+
+1. Start from an existing routine and edit it for them:
    ```bash
-   node tools/encrypt-plan.mjs
+   cp private/me.mjs private/priya.mjs
+   open -e private/priya.mjs
    ```
-   It asks for a passphrase twice. Use at least 12 characters. Four random words is strong and easy to type, e.g. *lantern cobalt mango drift*. The passphrase isn't stored anywhere, so keep it in your password manager. If you forget it, run the script again with a new one.
-3. Upload the encrypted file:
+   Keep the four routines (`preGym`, `postGym`, `retinal`, `rest`). Inside them you can change everything: names (e.g. call `retinal` "Peel night"), steps, products, portions, drying times, and which days each evening routine runs (`days: [1, 4]` means Monday and Thursday, with 0 for Sunday). Update the `text` at the bottom too. The AI chat reads it.
+2. Encrypt it and choose their passphrase:
    ```bash
-   git add plan.enc.json && git commit -m "Update routine" && git push
+   node tools/encrypt-plan.mjs priya
    ```
+3. Upload it:
+   ```bash
+   git add plans && git commit -m "Add Priya" && git push
+   ```
+4. Send them the link and their passphrase privately. They sign in with name **priya**. Capitals don't matter in names.
 
-Changing the passphrase works the same way. Your phone notices and asks for the new one. To lock the app on your phone, go to **Settings > Privacy > Lock now**.
+### Change a routine or passphrase
 
-Drying times can also be adjusted on the phone in **Settings > Drying times**, without re-encrypting.
+Edit `private/<name>.mjs`, run `node tools/encrypt-plan.mjs <name>` again, and push. Their phone asks for the passphrase again if it changed.
+
+### Remove a person
+
+Delete their file in `plans/` and push. They can no longer sign in.
+
+### Check a login
+
+```bash
+node tools/check-passphrase.mjs <name>
+```
+
+This shows whether the name and passphrase open the routine on your Mac and on the live site.
+
+On the phone, **Settings > Account > Sign out** switches to another person.
 
 ## 6. Backups
 
 Logs, notes and photos live in the app's storage on your phone. Use **Settings > Backup > Export** now and then, and save the file to Files or iCloud Drive. **Import** merges a backup back in.
+
+## 7. Buddy nudges
+
+When someone finishes a routine, any buddy who has missed a few days gets one friendly push notification, like *"You haven't done your routine for 4 days. Keep up with Kirthi to maintain your glow ✨"*.
+
+- **Not every day:** at most one nudge per person every 3 days, never between 21:00 and 08:00, and only when a buddy actually logs a routine. People who have never used the app aren't nudged.
+- **What the server stores:** this runs on a tiny free Cloudflare Worker (in `worker/`). It keeps only each person's push address, the date of their latest routine, and the date of their last nudge. No products, logs or photos.
+
+### One-time setup (about 15 minutes)
+
+You need a free Cloudflare account. All commands run on your Mac, from the project folder.
+
+1. **Push keys.** Skip this if you made them for GitHub reminders already:
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+2. **Create the server:**
+   ```bash
+   cd worker
+   npx wrangler login                        # opens the browser to sign in to Cloudflare
+   npx wrangler kv namespace create NUDGES   # copy the id it prints
+   ```
+   Paste that id into `worker/wrangler.toml` in place of `PASTE_YOUR_KV_ID_HERE`. Then:
+   ```bash
+   npx wrangler deploy                       # prints your server address, e.g. https://skin-ritual-nudges.<you>.workers.dev
+   npx wrangler secret put VAPID_PUBLIC_KEY  # paste the public key
+   npx wrangler secret put VAPID_PRIVATE_KEY # paste the private key
+   npx wrangler secret put VAPID_SUBJECT     # type mailto:your@email.com
+   cd ..
+   ```
+3. **Choose buddies.** At the bottom of each person's `private/<name>.mjs` there's a `profile`:
+   ```js
+   export const profile = {
+     displayName: 'Kirthi',  // how buddies see you: "Keep up with Kirthi"
+     buddies: ['priya'],     // whose nudges your routines can trigger
+     nudgeAfterDays: 3,      // you get nudged after missing this many days
+   };
+   ```
+   `buddies` works one way: Kirthi's routines nudge Priya. For both directions, add each other.
+4. **Encrypt everyone and upload the user list.** Encrypting gives each person a private key for the server:
+   ```bash
+   node tools/encrypt-plan.mjs me        # repeat for each person
+   node tools/nudge-users.mjs
+   cd worker && npx wrangler secret put USERS < ../private/worker-users.json && cd ..
+   ```
+5. **Connect the app.** In `js/config.js`, fill in your server address and VAPID public key, then push:
+   ```bash
+   git add . && git commit -m "Buddy nudges" && git push
+   ```
+6. **On each phone,** open the app from the Home Screen, go to **Settings > Reminders > Turn on notifications**, then tap **Send a test**.
+
+### Later
+
+- **New person, or changed buddies:** run `node tools/nudge-users.mjs` and the `wrangler secret put USERS` line again. A new person also needs `encrypt-plan` and a `git push`.
+- **Change the rules:** the cooldown and quiet hours are in `worker/wrangler.toml`. Run `npx wrangler deploy` after editing.
+- **Change the messages:** they're at the top of `worker/src/index.js`.
+- **Keep two files safe:** `private/.keys.json` and `private/worker-users.json` stay on your Mac with the routines. They're never uploaded.
 
 ## Files
 
@@ -140,9 +215,14 @@ css/styles.css           styles (light and dark), Twilight theme
 css/themes.css           the other four themes
 js/plan.js               routine logic
 js/lock.js               passphrase unlock
-plan.enc.json            your routine, encrypted (safe to upload)
-plan.private.mjs         your routine, readable (stays on your Mac)
-tools/encrypt-plan.mjs   turns the private file into plan.enc.json
+plans/                   everyone's routines, encrypted (safe to upload)
+private/                 everyone's routines, readable (stays on your Mac)
+tools/encrypt-plan.mjs   encrypts one person's routine into plans/
+tools/check-passphrase.mjs  checks a name and passphrase
+tools/nudge-users.mjs    builds the buddy list for the nudge server
+js/config.js             nudge server address and push key (public)
+js/nudge.js              tells the server when you've done a routine
+worker/                  the buddy-nudge server (Cloudflare Worker)
 js/app.js                Today, Settings, reminders, backup
 js/runner.js             step-by-step routine and drying timer
 js/progress.js           heatmap, weekly tracker, notes

@@ -2,6 +2,7 @@ import { ROUTINES, resolveSteps, suggestRoutine, routineLabel, isRetinalDay } fr
 import { state, addLog, todaysLogs, streak, dayStatus } from './store.js';
 import { getConditions, describeConditions } from './weather.js';
 import { $, esc, dateKey, fmtDur } from './util.js';
+import { checkin } from './nudge.js';
 
 const DROP = 'M60 4 C60 4 14 58 14 90 A46 46 0 0 0 106 90 C106 58 60 4 60 4 Z';
 
@@ -349,6 +350,7 @@ function finish() {
   });
   run.phase = 'done';
   render();
+  checkin(true);
 }
 
 function doneLine(n) {

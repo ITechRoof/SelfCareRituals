@@ -1,7 +1,11 @@
 import { dateKey, parseKey } from './util.js';
 import { isRetinalDay } from './plan.js';
 
-const KEY = 'skin-ritual:v1';
+// Each user's data lives under its own key: skin-ritual:v2:<user id>
+const LEGACY_KEY = 'skin-ritual:v1';
+const LAST_USER = 'skin-ritual:last-user';
+let KEY = null;
+let USER = null;
 
 const DEFAULTS = {
   setupDone: false,
@@ -26,7 +30,7 @@ const DEFAULTS = {
 
 function load() {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) || 'null');
+    const raw = KEY && JSON.parse(localStorage.getItem(KEY) || 'null');
     if (!raw) return structuredClone(DEFAULTS);
     return {
       ...structuredClone(DEFAULTS),
@@ -43,7 +47,30 @@ function load() {
   }
 }
 
-export const state = load();
+export const currentUser = () => USER;
+
+// Filled in by initStore() once someone signs in.
+export const state = structuredClone(DEFAULTS);
+
+export function initStore(uid) {
+  USER = uid;
+  KEY = `skin-ritual:v2:${uid}`;
+  dbp = null;
+  let migrated = false;
+  try {
+    // First sign-in on a phone that used the single-user version: that data becomes this user's.
+    if (!localStorage.getItem(KEY) && localStorage.getItem(LEGACY_KEY)) {
+      localStorage.setItem(KEY, localStorage.getItem(LEGACY_KEY));
+      localStorage.removeItem(LEGACY_KEY);
+      migrated = true;
+    }
+    localStorage.setItem(LAST_USER, uid);
+  } catch {}
+  const loaded = load();
+  for (const k of Object.keys(state)) delete state[k];
+  Object.assign(state, loaded);
+  if (migrated) migrateLegacyPhotos();
+}
 
 // Can this browser keep data between visits?
 export const storageWorks = (() => {
@@ -60,6 +87,7 @@ export const storageWorks = (() => {
 navigator.storage?.persist?.().catch(() => {});
 
 export function save() {
+  if (!KEY) return;
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
   } catch (e) {
@@ -69,7 +97,9 @@ export function save() {
 }
 
 export function resetAll() {
+  if (!KEY) return;
   localStorage.removeItem(KEY);
+  indexedDB.deleteDatabase(photoDbName());
 }
 
 export function addLog(entry) {
@@ -150,9 +180,35 @@ export function setSlotDone(key, slot, done) {
 
 // ---------- Photos (IndexedDB) ----------
 let dbp;
+const photoDbName = (uid = USER) => `skin-ritual-photos-${uid}`;
+
+function openPhotoDb(name) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(name, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('photos', { keyPath: 'id' });
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// Move photos from the single-user version into this user's space.
+async function migrateLegacyPhotos() {
+  try {
+    const old = await openPhotoDb('skin-ritual-photos');
+    const list = await new Promise((res) => {
+      const q = old.transaction('photos').objectStore('photos').getAll();
+      q.onsuccess = () => res(q.result || []);
+      q.onerror = () => res([]);
+    });
+    old.close();
+    for (const p of list) await putPhoto(p);
+    indexedDB.deleteDatabase('skin-ritual-photos');
+  } catch {}
+}
+
 function db() {
   dbp ??= new Promise((resolve, reject) => {
-    const req = indexedDB.open('skin-ritual-photos', 1);
+    const req = indexedDB.open(photoDbName(), 1);
     req.onupgradeneeded = () => req.result.createObjectStore('photos', { keyPath: 'id' });
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);

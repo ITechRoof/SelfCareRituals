@@ -1,13 +1,15 @@
 // Routine logic. The routine itself (products, order, portions, waits) lives
-// encrypted in plan.enc.json and is loaded after you unlock the app.
-// To edit it, change plan.private.mjs and run: node tools/encrypt-plan.mjs
+// encrypted per person in plans/ and is loaded after they sign in.
+// To edit one, change private/<name>.mjs and run: node tools/encrypt-plan.mjs <name>
 
 export let ROUTINES = {};
 export let PLAN_TEXT = '';
+export let ACCOUNT = null; // { key, displayName } for buddy nudges
 
 export function setPlan(plan) {
   ROUTINES = plan.routines;
   PLAN_TEXT = plan.text;
+  ACCOUNT = plan.account || null;
 }
 
 export const ROUTINE_ORDER = ['preGym', 'postGym', 'retinal', 'rest'];
