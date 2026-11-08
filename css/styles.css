@@ -515,6 +515,43 @@ button:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
 .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .sheet-head .h2 { margin: 0; }
 
+/* ---------- Storage warning ---------- */
+#storage-warning {
+  position: sticky; top: 0; z-index: 45;
+  margin: 8px 12px 0; padding: 12px 14px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line));
+  font-size: var(--s-1); line-height: 1.45;
+}
+#storage-warning strong { display: block; color: var(--danger); margin-bottom: 2px; }
+
+/* ---------- Lock screen ---------- */
+body.locked .tabbar, body.locked #view { display: none; }
+.lock {
+  position: fixed; inset: 0; z-index: 50;
+  display: grid; place-items: center; padding: 24px;
+  padding-top: calc(24px + env(safe-area-inset-top, 0));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0));
+  color: var(--sc-fg);
+  background:
+    radial-gradient(120% 70% at 100% 0%, var(--sc-c), transparent 60%),
+    linear-gradient(160deg, var(--sc-a), var(--sc-b));
+  --tone: var(--sc-accent); --on-tone: var(--sc-on); --muted: var(--sc-muted);
+}
+.lock-card { width: 100%; max-width: 380px; display: grid; gap: 14px; }
+.lock-drop { width: 54px; height: auto; fill: var(--sc-accent); filter: drop-shadow(0 10px 24px var(--sc-accent)); margin-bottom: 6px; }
+.lock .display { font-size: var(--s4); }
+.lock-sub { margin: -4px 0 8px; color: var(--sc-muted); }
+.lock input[type=password] {
+  background: var(--sc-card); border: 1px solid var(--sc-line); color: var(--sc-fg);
+  padding: 15px 16px; border-radius: 16px; font-size: 17px;
+}
+.lock input[type=password]::placeholder { color: var(--sc-muted); }
+.lock .check { color: var(--sc-muted); }
+.lock .start:disabled { opacity: 0.7; }
+.lock-err { min-height: 1.4em; margin: 0; font-size: var(--s-1); color: #FFC7D1; }
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; padding: 0; margin: -1px; }
+
 /* ---------- Toast ---------- */
 #toast {
   position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0)); z-index: 60;

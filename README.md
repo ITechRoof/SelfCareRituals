@@ -6,9 +6,9 @@ It includes:
 
 - **Guided routines:** start a routine and it picks morning or evening from the time, asks "pre-gym or post-gym?" in the morning, and picks retinal or rest night from the day.
 - **Season-aware steps:** portions and notes switch between summer and winter care, based on today's forecast or set manually.
-- **Drying timers between steps:** tap Done and a countdown starts. It chimes and moves to the next step by itself. The ANR wait on retinal nights follows your plan (3 min in summer, 5 in winter). Other steps get suggested short waits (30 s to 2 min), all adjustable in Settings > Drying times.
+- **Drying timers between steps:** tap Done and a countdown starts. It chimes and moves to the next step by itself. Wait times come from your plan and can be adjusted in Settings > Drying times.
 - **Morning and evening tracking:** each day has a morning tick (your main post-gym routine), an evening tick (retinal or rest night), and a pre-gym tick on gym days. A day counts towards your streak when both morning and evening are done. Routines you did without the app can be ticked by hand. The heatmap splits each day into a morning half and an evening half.
-- **Weekly skin notes** for milia, pores and de-tanning.
+- **Weekly skin notes.**
 - **Progress photos:** photos per area with a faint overlay of the last shot so angles match, plus a before/after slider.
 - **AI chat:** an Ask tab that knows your plan, today's weather and your recent log (uses your Anthropic API key).
 - **Reminders:** via your iPhone Calendar (simple) or real push notifications sent by a GitHub Action (advanced).
@@ -88,30 +88,44 @@ Some things to know about push:
 
 The chat is given your full plan, today's weather and season, the routine that's due, your last 14 days of logs, and this week's skin notes.
 
-## 5. Changing your routine
+## 5. Your routine is private
 
-All products, order, portions, seasonal notes and wait times live in **`js/plan.js`**. Each step looks like this:
+The repo is public, but your routine isn't readable in it:
 
-```js
-{
-  id: 'ret-anr',
-  product: 'Estée Lauder ANR Serum',
-  area: 'Face & neck',
-  portion: { all: '1 full dropper' },          // or { summer: '…', winter: '…' }
-  how: 'Press into face and neck…',
-  note: { winter: 'Winter: wait the full 5 minutes…' },
-  wait: { summer: 180, winter: 300, label: 'Let the ANR dry until bone-dry' },  // seconds
-}
-```
+- **Encrypted routine:** your products, order, portions and drying times are stored only in `plan.enc.json`, encrypted with AES-256. It's unreadable without your passphrase.
+- **Lock screen:** the app asks for the passphrase before showing anything. Tick "Stay unlocked on this phone" and you'll only enter it once. iPhone can also save it in Passwords and offer it with Face ID.
+- **Private source file:** the readable version, `plan.private.mjs`, lives only on your Mac. `.gitignore` stops git from uploading it.
+- **Your logs, notes and photos** never leave your phone at all.
 
-To change drying pauses without touching code, use Settings > Drying times in the app. Those settings override the `wait` values here.
+### First-time setup, and whenever you change your routine
 
-After any change, bump `VERSION` in `sw.js` (e.g. `skin-ritual-v2`) and push. Then close and reopen the app twice to pick up the update.
+You need Node.js on your Mac. Check with `node -v`, or install it with `brew install node`.
 
-Other settings you can change:
+1. Edit `plan.private.mjs` if you want to change anything. Each step looks like:
+   ```js
+   {
+     id: 'pm-serum',                      // unique, never reuse
+     product: 'Serum name',
+     area: 'Face & neck',
+     portion: { all: '1 dropper' },       // or { summer: '…', winter: '…' }
+     how: 'How to apply it',
+     note: { winter: 'Winter-only tip' },
+     wait: { summer: 180, winter: 300, label: 'Let it dry' },  // seconds
+   }
+   ```
+2. Encrypt it:
+   ```bash
+   node tools/encrypt-plan.mjs
+   ```
+   It asks for a passphrase twice. Use at least 12 characters. Four random words is strong and easy to type, e.g. *lantern cobalt mango drift*. The passphrase isn't stored anywhere, so keep it in your password manager. If you forget it, run the script again with a new one.
+3. Upload the encrypted file:
+   ```bash
+   git add plan.enc.json && git commit -m "Update routine" && git push
+   ```
 
-- **Season:** under Settings > Weather and season, use the forecast with a threshold (default: today's high of 18°C or above means summer care), or force summer or winter.
-- **Evening:** routines switch to evening at 16:00 by default (Settings > Gym days).
+Changing the passphrase works the same way. Your phone notices and asks for the new one. To lock the app on your phone, go to **Settings > Privacy > Lock now**.
+
+Drying times can also be adjusted on the phone in **Settings > Drying times**, without re-encrypting.
 
 ## 6. Backups
 
@@ -122,7 +136,11 @@ Logs, notes and photos live in the app's storage on your phone. Use **Settings >
 ```
 index.html               app shell
 css/styles.css           styles (light and dark)
-js/plan.js               your routines: edit this
+js/plan.js               routine logic
+js/lock.js               passphrase unlock
+plan.enc.json            your routine, encrypted (safe to upload)
+plan.private.mjs         your routine, readable (stays on your Mac)
+tools/encrypt-plan.mjs   turns the private file into plan.enc.json
 js/app.js                Today, Settings, reminders, backup
 js/runner.js             step-by-step routine and drying timer
 js/progress.js           heatmap, weekly tracker, notes

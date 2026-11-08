@@ -4,10 +4,10 @@ import { getConditions, describeConditions } from './weather.js';
 import { esc, miniMarkdown, dateKey, addDays, weekStart, fmtDate, DAY_LONG } from './util.js';
 
 const SUGGESTIONS = [
-  'Why does ANR need to be bone-dry before the retinal?',
+  'Why do I wait between some steps?',
   'My skin is stinging today. What should I change?',
-  'Can I skip tonight’s retinal if I’m tired?',
-  'How long until I see de-tanning results?',
+  'Can I skip tonight’s routine if I’m tired?',
+  'How long until I see results?',
 ];
 
 let busy = false;
@@ -21,7 +21,7 @@ async function systemPrompt() {
     .map((_, i) => {
       const d = addDays(now, -i);
       const logs = logsOn(dateKey(d));
-      return `${fmtDate(d)}: ${logs.length ? logs.map((l) => routineLabel(l.routine, d, s) + (l.skipped?.length ? ` (skipped ${l.skipped.length})` : '') + (l.swaps?.length ? ' (swapped to Cetaphil)' : '')).join(', ') : 'nothing logged'}`;
+      return `${fmtDate(d)}: ${logs.length ? logs.map((l) => routineLabel(l.routine, d, s) + (l.skipped?.length ? ` (skipped ${l.skipped.length})` : '') + (l.swaps?.length ? ' (used the gentler alternative)' : '')).join(', ') : 'nothing logged'}`;
     })
     .join('\n');
   const notes = state.notes[dateKey(weekStart())] || '';
@@ -45,7 +45,7 @@ ${notes || '(none)'}
 GUIDANCE
 - Answer from the plan first. If something isn't in the plan, say so and give general, cautious skincare information.
 - Keep answers short and practical: they're reading on a phone, often mid-routine.
-- Never encourage combining the retinal with acids or Kojic toner on the face on the same night, or using the acid wash before the gym.
+- Respect the plan's rules about which products must not be combined on the same night or used before exercise. Never suggest breaking them.
 - For persistent stinging, burning, swelling, rashes, eye irritation or anything worrying, suggest pausing actives and seeing a pharmacist, GP or dermatologist. You are not a doctor.`;
 }
 

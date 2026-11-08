@@ -109,7 +109,7 @@ export function renderProgress(el) {
 
     <section class="block">
       <h2 class="h2">Skin notes for this week</h2>
-      <textarea class="notes" rows="4" placeholder="Milia, pores, facial or body tanning, any irritation">${esc(state.notes[noteKey] || '')}</textarea>
+      <textarea class="notes" rows="4" placeholder="How is your skin this week? Any changes or irritation?">${esc(state.notes[noteKey] || '')}</textarea>
       ${
         pastNotes.length
           ? `<details class="past-notes"><summary>Earlier weeks (${pastNotes.length})</summary>${pastNotes

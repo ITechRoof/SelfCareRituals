@@ -44,11 +44,26 @@ function load() {
 
 export const state = load();
 
+// Can this browser keep data between visits?
+export const storageWorks = (() => {
+  try {
+    localStorage.setItem('skin-ritual:probe', '1');
+    localStorage.removeItem('skin-ritual:probe');
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+// Ask the browser not to clear our data when space is low.
+navigator.storage?.persist?.().catch(() => {});
+
 export function save() {
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
   } catch (e) {
     console.error('Could not save', e);
+    document.dispatchEvent(new CustomEvent('storage-failed'));
   }
 }
 

@@ -1,5 +1,6 @@
-import { state, save, todaysLogs, streak, allPhotos, putPhoto, resetAll } from './store.js';
-import { ROUTINES, resolveSteps, suggestRoutine, routineLabel, isRetinalDay } from './plan.js';
+import { state, save, todaysLogs, streak, allPhotos, putPhoto, resetAll, storageWorks } from './store.js';
+import { ROUTINES, resolveSteps, suggestRoutine, routineLabel, isRetinalDay, setPlan } from './plan.js';
+import { autoUnlock, unlock, lockNow, MissingPlanError } from './lock.js';
 import { getConditions, describeConditions, locateMe, searchPlace } from './weather.js';
 import { openRunner } from './runner.js';
 import { renderProgress } from './progress.js';
@@ -9,7 +10,10 @@ import { $, $$, esc, toast, download, fmtClock, fmtDur, dateKey, DAY_SHORT, DAY_
 
 const VIEWS = { today: renderToday, progress: renderProgress, photos: renderPhotos, ask: renderAsk, settings: renderSettings };
 
+let unlocked = false;
+
 function route() {
+  if (!unlocked) return;
   const tab = (location.hash.slice(1) || 'today').split('?')[0];
   const name = VIEWS[tab] ? tab : 'today';
   $$('.tab').forEach((t) => t.setAttribute('aria-current', t.dataset.tab === name ? 'page' : 'false'));
@@ -179,6 +183,12 @@ function renderSettings(el) {
     </section>
 
     <section class="block">
+      <h2 class="h2">Privacy</h2>
+      <p class="muted small">Your routine is stored encrypted and only opens with your passphrase. Lock the app to ask for it again on this phone.</p>
+      <div class="row-actions"><button class="ghost" data-lock>Lock now</button></div>
+    </section>
+
+    <section class="block">
       <h2 class="h2">Backup</h2>
       <p class="muted small">Your logs, notes and photos live only on this phone. Export a backup now and then.</p>
       <label class="check"><input type="checkbox" data-incphotos> Include photos (bigger file)</label>
@@ -265,6 +275,11 @@ function renderSettings(el) {
   q('[data-key]').addEventListener('change', (e) => ((s.apiKey = e.target.value.trim()), commit('API key saved')));
   q('[data-model]').addEventListener('change', (e) => ((s.model = e.target.value.trim() || 'claude-sonnet-5-5'), commit('Saved')));
 
+  q('[data-lock]').addEventListener('click', async () => {
+    await lockNow();
+    location.reload();
+  });
+
   q('[data-export]').addEventListener('click', () => exportBackup(q('[data-incphotos]').checked));
   q('[data-import]').addEventListener('change', (e) => importBackup(e.target.files[0]));
   q('[data-reset]').addEventListener('click', async () => {
@@ -343,11 +358,12 @@ function buildIcs() {
     ].join('\r\n');
   };
   const gym = state.settings.gymDays.map((d) => BY[d]).join(',');
+  const order = (id) => ROUTINES[id].steps.map((st) => st.product).join(', then ');
   const events = [
-    gym && ev('pre-gym', 'Pre-gym skincare', t.pre, `FREQ=WEEKLY;BYDAY=${gym}`, 'Rinse or Cetaphil, then sunscreen. No acid wash before the gym.'),
-    ev('post-gym', 'Morning skincare', t.post, 'FREQ=DAILY', 'Chemist at Play wash, ANR, COSRX, sunscreen.'),
-    ev('retinal', 'Retinal night', t.pm, 'FREQ=WEEKLY;BYDAY=MO,TH', 'Cetaphil, ANR then wait until bone-dry, eye retinal, face retinal, cream, body toner.'),
-    ev('rest', 'Rest night skincare', t.pm, 'FREQ=WEEKLY;BYDAY=TU,WE,FR,SA,SU', 'Acid wash, Kojic toner, ANR, cream, body toner.'),
+    gym && ev('pre-gym', 'Pre-gym skincare', t.pre, `FREQ=WEEKLY;BYDAY=${gym}`, order('preGym')),
+    ev('post-gym', 'Morning skincare', t.post, 'FREQ=DAILY', order('postGym')),
+    ev('retinal', ROUTINES.retinal.name, t.pm, 'FREQ=WEEKLY;BYDAY=MO,TH', order('retinal')),
+    ev('rest', ROUTINES.rest.name, t.pm, 'FREQ=WEEKLY;BYDAY=TU,WE,FR,SA,SU', order('rest')),
     ev('photos', 'Progress photos', t.photoTime, `FREQ=WEEKLY;BYDAY=${BY[+t.photoDay]}`, 'Same light, same angle.'),
   ].filter(Boolean);
   return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Skin Ritual//EN', 'CALSCALE:GREGORIAN', ...events, 'END:VCALENDAR'].join('\r\n');
@@ -474,6 +490,89 @@ if (params.get('tab') === 'photos') location.hash = 'photos';
 if (params.get('area')) setPhotoArea(params.get('area'));
 if (params.toString()) history.replaceState(null, '', location.pathname + location.hash);
 
-route();
-if (!state.setupDone) firstRun();
-else if (params.get('start') === '1') startRoutine();
+const DROP_PATH = 'M60 4 C60 4 14 58 14 90 A46 46 0 0 0 106 90 C106 58 60 4 60 4 Z';
+
+function storageWarning() {
+  if ($('#storage-warning')) return;
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const el = document.createElement('div');
+  el.id = 'storage-warning';
+  el.setAttribute('role', 'alert');
+  el.innerHTML = `<strong>This browser isn’t saving your data.</strong>
+    Your setup and routines will be forgotten when you close it.
+    ${standalone ? '' : 'Open Skin Ritual from its Home Screen icon, not a Safari tab. '}
+    Check you’re not in Private Browsing, and that Settings → Safari → Advanced → Block All Cookies is off.`;
+  document.body.prepend(el);
+}
+document.addEventListener('storage-failed', storageWarning);
+
+function start(plan) {
+  setPlan(plan);
+  if (!storageWorks) storageWarning();
+  unlocked = true;
+  document.body.classList.remove('locked');
+  $('#lock')?.remove();
+  route();
+  if (!state.setupDone) firstRun();
+  else if (params.get('start') === '1') startRoutine();
+}
+
+function showLock(message = '') {
+  document.body.classList.add('locked');
+  const el = document.createElement('div');
+  el.id = 'lock';
+  el.className = 'lock';
+  el.dataset.scene = 'dusk';
+  el.innerHTML = `
+    <form class="lock-card" autocomplete="on">
+      <svg class="lock-drop" viewBox="0 0 120 140" aria-hidden="true"><path d="${DROP_PATH}"/></svg>
+      <h1 class="display">Skin Ritual</h1>
+      <p class="lock-sub">Enter your passphrase to open your routine.</p>
+      <input class="visually-hidden" type="text" name="username" autocomplete="username" value="Skin Ritual" tabindex="-1" aria-hidden="true">
+      <label class="visually-hidden" for="pass">Passphrase</label>
+      <input id="pass" name="password" type="password" autocomplete="current-password" placeholder="Passphrase" required>
+      <label class="check"><input type="checkbox" data-remember checked> Stay unlocked on this phone</label>
+      <button class="start" type="submit"><svg viewBox="0 0 120 140" aria-hidden="true"><path d="${DROP_PATH}"/></svg>Unlock</button>
+      <p class="lock-err" role="alert">${message}</p>
+    </form>`;
+  document.body.appendChild(el);
+  const form = el.querySelector('form');
+  const input = el.querySelector('#pass');
+  const err = el.querySelector('.lock-err');
+  const btn = el.querySelector('button[type=submit]');
+  input.focus();
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.textContent = '';
+    btn.disabled = true;
+    btn.lastChild.textContent = 'Unlocking…';
+    try {
+      const plan = await unlock(input.value, el.querySelector('[data-remember]').checked);
+      start(plan);
+    } catch (ex) {
+      btn.disabled = false;
+      btn.lastChild.textContent = 'Unlock';
+      err.textContent =
+        ex.message === 'wrong'
+          ? 'That passphrase didn’t work. Try again.'
+          : ex instanceof MissingPlanError
+            ? 'No encrypted routine has been uploaded yet. Run node tools/encrypt-plan.mjs and push plan.enc.json.'
+            : 'Couldn’t load your routine. Check your connection and try again.';
+      input.select();
+    }
+  });
+}
+
+(async () => {
+  try {
+    const plan = await autoUnlock();
+    if (plan) return start(plan);
+    showLock();
+  } catch (e) {
+    showLock(
+      e instanceof MissingPlanError
+        ? 'No encrypted routine has been uploaded yet. Run node tools/encrypt-plan.mjs and push plan.enc.json.'
+        : ''
+    );
+  }
+})();
