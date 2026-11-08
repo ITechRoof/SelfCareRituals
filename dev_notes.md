@@ -105,6 +105,25 @@ Things that need occasional attention:
 - **Paused schedules:** GitHub pauses scheduled workflows after 60 days without commits. It emails you first, and one click re-enables them.
 - **Late runs:** scheduled runs can start a few minutes late.
 
+## Personal routine edits
+
+People can edit their own routine in the app (**Settings > My routine**). Edits live only on their phone, in `state.settings.routineEdits`, so they're included in backups:
+
+```js
+{ steps: { 'post-anr': { product, portion: { all } | { summer, winter }, how, off: true } },
+  retinalDays: [2, 5] }
+```
+
+- **Merging:** `applyEdits()` in `js/plan.js` layers them over the decrypted plan at sign-in and after every edit.
+  - Fields a person hasn't touched keep following the admin's plan, including later updates.
+  - Edits to a step id that no longer exists are ignored.
+- **Retinal nights:** changing them puts every other evening on the rest routine.
+- **AI chat:** `describeEdits()` turns the edits into words for the chat's system prompt.
+- **Warnings, never blocking:** retinal nights back to back, more retinal nights than the plan, no retinal nights, or turning off a sunscreen step.
+- **You can't see their edits.** If someone asks why their routine looks different from yours, their edits are the reason. **Undo all my changes** resets them.
+
+Ideas for later: adding new steps, reordering, and syncing edits across devices (needs the server).
+
 ## Data recorded
 
 Each log entry (`state.logs`) contains:
@@ -200,6 +219,7 @@ js/runner.js      guided routine, drying timer, per-step timeline
 js/progress.js    tracker, heatmap, notes, hand ticks
 js/photos.js      camera, ghost overlay, compare
 js/ask.js         AI chat
+js/editor.js      "My routine" editor (personal edits)
 js/plan.js        routine logic (data comes from the encrypted plan)
 js/store.js       per-person storage, streaks, photos
 js/lock.js        sign-in and decryption

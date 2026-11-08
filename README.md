@@ -44,6 +44,23 @@ Before you begin, you'll see the steps, today's season and any reminders. Tap **
 
 When you finish, the routine is saved automatically. A routine done after midnight counts as the night before, so late nights don't break your streak.
 
+## Changing your routine
+
+If you switch products or want to adjust something, go to **Settings > My routine > Edit my routine**. Tap any step to:
+
+- **Swap the product.** If you use it in other routines too, you can change them all at once.
+- **Change the amount,** separately for summer and winter where your plan has both.
+- **Change the "how to apply" note.**
+- **Turn the step off** if you've stopped using it.
+
+You can also choose **which evenings are retinal nights**. The others become rest nights.
+
+- **Gentle warnings:** the app warns you about changes worth a second thought, like retinal nights back to back or turning off sunscreen, but it never stops you.
+- **Undo:** steps you've changed show **Changed**. **Back to my plan's version** undoes one step, and **Undo all my changes** resets everything.
+- **Privacy:** your changes are saved on your phone only and included in your backup.
+- **Plan updates:** if your plan is updated later, everything you haven't changed follows the update, and your own changes stay.
+- **AI chat:** knows about your changes.
+
 ## The screens
 
 ### Today
@@ -79,6 +96,7 @@ This needs your own Anthropic API key, from **console.anthropic.com**. Add it in
 - **Theme:** five colour themes (Twilight, Soft pastel, Warm luxe, Fresh spa, Bold jewel). Light or dark follows your iPhone.
 - **Gym days** and the time your evening routines start.
 - **Weather and season:** use the forecast, or force summer or winter care.
+- **My routine:** swap products, change amounts, turn steps off, choose your retinal nights.
 - **Drying times:** change or switch off any wait.
 - **Reminders:**
   - **Add to Calendar:** repeating calendar alerts. Works for everyone, no setup needed.

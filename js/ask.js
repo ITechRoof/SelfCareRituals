@@ -1,5 +1,5 @@
 import { state, save, logsOn } from './store.js';
-import { PLAN_TEXT, routineLabel, suggestRoutine } from './plan.js';
+import { PLAN_TEXT, routineLabel, suggestRoutine, describeEdits } from './plan.js';
 import { getConditions, describeConditions } from './weather.js';
 import { esc, miniMarkdown, dateKey, dayKey, skinDate, addDays, weekStart, fmtDate, DAY_LONG } from './util.js';
 
@@ -32,7 +32,11 @@ async function systemPrompt() {
 
 ${PLAN_TEXT}
 
-TODAY
+${describeEdits(state.settings.routineEdits) ? `PERSONAL CHANGES
+The user has changed their routine in the app. Follow these where they differ from the plan above:
+${describeEdits(state.settings.routineEdits)}
+
+` : ''}TODAY
 ${DAY_LONG[day.getDay()]} (local time ${now.toLocaleString()}). Gym days: ${s.gymDays.map((d) => DAY_LONG[d]).join(', ') || 'none set'}.
 Season mode: ${describeConditions(c)}${w ? `. Now ${w.temp}°C, humidity ${w.humidity}%, today ${w.min}–${w.max}°C, UV max ${w.uv}` : ''}.
 Routine most likely due now: ${routineLabel(suggestRoutine(now, s, logsOn(dayKey())), day, s)}.

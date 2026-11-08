@@ -1,5 +1,6 @@
 import { state, save, todaysLogs, timeEstimated, streak, allPhotos, putPhoto, resetAll, storageWorks, initStore } from './store.js';
-import { ROUTINES, ACCOUNT, resolveSteps, suggestRoutine, routineLabel, isRetinalDay, setPlan } from './plan.js';
+import { ROUTINES, ACCOUNT, resolveSteps, suggestRoutine, routineLabel, isRetinalDay, setPlan, applyEdits } from './plan.js';
+import { openRoutineEditor, editCount } from './editor.js';
 import { autoUnlock, unlock, lockNow } from './lock.js';
 import { checkin, registerPush, testPush, nudgesEnabled } from './nudge.js';
 import { VAPID_PUBLIC_KEY, ADMIN_NAME, ADMIN_EMAIL } from './config.js';
@@ -189,6 +190,13 @@ function renderSettings(el) {
     </section>
 
     <section class="block">
+      <h2 class="h2">My routine</h2>
+      <p class="muted small">Swap a product, change an amount, turn a step off or choose your retinal nights. Changes stay on this phone.</p>
+      ${editCount() ? `<p class="small">You’ve made <strong>${editCount()}</strong> change${editCount() > 1 ? 's' : ''} to your plan.</p>` : ''}
+      <div class="row-actions"><button class="primary" data-edit-routine>Edit my routine</button></div>
+    </section>
+
+    <section class="block">
       <h2 class="h2">Drying times</h2>
       <p class="muted small">How long the timer waits after each step before moving on. Set any to Off to skip it.</p>
       ${dryingSettings()}
@@ -335,6 +343,8 @@ function renderSettings(el) {
       commit('Saved');
     })
   );
+  q('[data-edit-routine]').addEventListener('click', () => openRoutineEditor(() => renderSettings(el)));
+
   q('[data-reset-waits]').addEventListener('click', () => {
     s.waits = {};
     commit('Drying times reset');
@@ -381,7 +391,7 @@ function dryingSettings() {
     .map((rid) => {
       const r = ROUTINES[rid];
       const rows = r.steps
-        .filter((st) => st.id !== 'post-body-spf')
+        .filter((st) => st.id !== 'post-body-spf' && !st.off)
         .slice(0, -1) // no wait needed after the last step
         .map((st) => {
           const d = defaultWait(st.id);
@@ -426,7 +436,7 @@ function buildIcs() {
     ].join('\r\n');
   };
   const gym = state.settings.gymDays.map((d) => BY[d]).join(',');
-  const order = (id) => ROUTINES[id].steps.map((st) => st.product).join(', then ');
+  const order = (id) => ROUTINES[id].steps.filter((st) => !st.off).map((st) => st.product).join(', then ');
   const events = [
     gym && ev('pre-gym', 'Pre-gym skincare', t.pre, `FREQ=WEEKLY;BYDAY=${gym}`, order('preGym')),
     ev('post-gym', 'Morning skincare', t.post, 'FREQ=DAILY', order('postGym')),
@@ -654,6 +664,7 @@ function start({ uid, name, plan }) {
   save();
   applyPalette();
   setPlan(plan);
+  applyEdits(state.settings.routineEdits);
   unlocked = true;
   if (!storageWorks) storageWarning();
   document.body.classList.remove('locked');
