@@ -57,30 +57,57 @@ In **Settings > Reminders**, set your times and tap **Add to Calendar**. iPhone 
 
 If the download doesn't open from the home-screen app, open the same page in Safari and tap the button there.
 
-### Advanced: real push notifications
+### Real push notifications
 
-This needs iOS 16.4 or later and the app installed on the home screen. A GitHub Action checks `reminders.json` every 15 minutes and sends any reminder that's due.
+This needs iOS 16.4 or later and the app installed on the Home Screen. A GitHub Action checks `reminders.json` every 15 minutes and sends any reminder that's due.
 
-1. **Make keys** on any computer with Node.js:
+**You, once:**
+
+1. **Make a key pair.** Run this once and keep both keys in your password manager:
    ```bash
    npx web-push generate-vapid-keys
    ```
-   Never commit the private key. Your repo is public.
-2. **Add secrets** in the repo under **Settings > Secrets and variables > Actions > New repository secret**:
+2. **Add three secrets** in GitHub under **Settings > Secrets and variables > Actions**:
    - `VAPID_PUBLIC_KEY`: the public key
    - `VAPID_PRIVATE_KEY`: the private key
-   - `VAPID_SUBJECT`: `mailto:` followed by your email
-3. **Subscribe your phone.** In the app, go to **Settings > Reminders > Push notifications from GitHub**, paste the **public** key, and tap **Turn on notifications**. Then tap **Copy**.
-4. **Save the subscription** as a repo secret named `PUSH_SUBSCRIPTION`.
-5. **Test it.** Open the repo's **Actions** tab, choose **Skincare reminders**, then **Run workflow**. A test notification should arrive.
-6. **Change times** by editing `reminders.json`. Times are UK local time (`Europe/London`), and the days and texts are yours to change.
+   - `VAPID_SUBJECT`: `mailto:` followed by your email address, with no spaces
+3. **Fill in `js/config.js`:**
+   - `VAPID_PUBLIC_KEY`: the same public key
+   - `ADMIN_NAME`: your name, shown on everyone's Send button
+   - `ADMIN_EMAIL` (optional): adds an Email option. The file is public.
 
-Some things to know about push:
+   Then push.
 
-- GitHub can run scheduled jobs a few minutes late. Reminders fire within a 15-minute window of the set time.
-- GitHub pauses scheduled workflows on a public repo after 60 days without any commits. It emails you first, and one click re-enables them. Any small commit also resets the clock.
-- If you reinstall the app or clear its data, turn notifications on again and update the `PUSH_SUBSCRIPTION` secret.
-- Tapping a routine notification opens the app straight into **Start routine**. The photo reminder opens the Photos tab.
+**Each person, on their phone:**
+
+1. Open the app from the Home Screen.
+2. Go to **Settings > Reminders > Turn on notifications > Allow**.
+3. Tap **Send my address to …**. The share sheet opens. Pick WhatsApp, Messages or Mail and send it to you.
+
+**You, for each message you receive:**
+
+1. Copy the whole message on your Mac.
+2. In the project folder, run:
+   ```bash
+   pbpaste | node tools/add-subscription.mjs
+   ```
+3. It saves that phone in `private/subscriptions.json` (never uploaded) and updates the `PUSH_SUBSCRIPTION` secret with everyone, using the GitHub CLI.
+
+If it can't reach GitHub, it prints the text to paste into the secret yourself. Other commands:
+
+```bash
+node tools/add-subscription.mjs --list            # who is subscribed
+node tools/add-subscription.mjs --remove priya    # take someone off
+```
+
+**Test:** go to the **Actions** tab, then **Skincare reminders > Run workflow**. The log checks your keys and email format first, and the run turns red if anything fails.
+
+Some things to know:
+
+- **Times:** reminders use the UK times in `reminders.json`, the same for everyone. Edit and push to change them.
+- **Delays:** GitHub can start scheduled jobs a few minutes late.
+- **Pauses:** GitHub pauses scheduled workflows after 60 days without commits. It emails you first, and one click re-enables them.
+- **Reinstalls:** if someone reinstalls the app or changes phone, they tap **Send my address** again and you run the command again.
 
 ## 4. AI chat
 
@@ -220,6 +247,7 @@ private/                 everyone's routines, readable (stays on your Mac)
 tools/encrypt-plan.mjs   encrypts one person's routine into plans/
 tools/check-passphrase.mjs  checks a name and passphrase
 tools/nudge-users.mjs    builds the buddy list for the nudge server
+tools/add-subscription.mjs  adds a phone to the GitHub reminders
 js/config.js             nudge server address and push key (public)
 js/nudge.js              tells the server when you've done a routine
 worker/                  the buddy-nudge server (Cloudflare Worker)

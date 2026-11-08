@@ -1,8 +1,8 @@
 import { state, save, todaysLogs, streak, allPhotos, putPhoto, resetAll, storageWorks, initStore } from './store.js';
-import { ROUTINES, resolveSteps, suggestRoutine, routineLabel, isRetinalDay, setPlan } from './plan.js';
+import { ROUTINES, ACCOUNT, resolveSteps, suggestRoutine, routineLabel, isRetinalDay, setPlan } from './plan.js';
 import { autoUnlock, unlock, lockNow } from './lock.js';
 import { checkin, registerPush, testPush, nudgesEnabled } from './nudge.js';
-import { VAPID_PUBLIC_KEY } from './config.js';
+import { VAPID_PUBLIC_KEY, ADMIN_NAME, ADMIN_EMAIL } from './config.js';
 import { getConditions, describeConditions, locateMe, searchPlace } from './weather.js';
 import { openRunner } from './runner.js';
 import { renderProgress } from './progress.js';
@@ -210,7 +210,9 @@ function renderSettings(el) {
         ${
           nudgesEnabled()
             ? '<p class="small">Turn these on for reminders and buddy nudges. If a buddy finishes a routine while you’ve missed a few days, you’ll get a friendly nudge, at most once every few days.</p>'
-            : '<p class="small">Push notifications need a sender. Setup steps are in the README.</p>'
+            : VAPID_PUBLIC_KEY
+              ? '<p class="small">Turn these on to get reminders for your routines.</p>'
+              : '<p class="small">Push notifications need a sender. Setup steps are in the README.</p>'
         }
         ${!standalone ? '<p class="small warn">Open the app from your Home Screen to turn on notifications. iPhone only allows them for installed web apps.</p>' : ''}
         ${!pushSupported ? '<p class="small warn">This browser doesn’t support web push.</p>' : ''}
@@ -313,6 +315,7 @@ function renderSettings(el) {
 
   q('[data-vapid]')?.addEventListener('change', (e) => ((s.vapidPublicKey = e.target.value.trim()), commit()));
   q('[data-push]').addEventListener('click', () => enablePush(q('.push-out')));
+  restoreAddressShare(q('.push-out'));
   q('[data-testpush]')?.addEventListener('click', async () => {
     try {
       await testPush();
@@ -469,23 +472,73 @@ async function enablePush(out) {
     } catch (err) {
       toast(`Couldn’t reach the nudge server: ${err.message}`);
     }
-    out.innerHTML = `<p class="small"><strong>Notifications are on.</strong>${buddy ? ' Buddy nudges will reach this phone.' : ''}</p>
-      <details class="advanced"><summary>For GitHub reminders</summary>
-        <p class="small">To get the timed reminders from <code>reminders.json</code>, save this as the <code>PUSH_SUBSCRIPTION</code> secret in your GitHub repo.</p>
-        <textarea class="mono-box" rows="5" readonly>${esc(json)}</textarea>
-        <div class="row-actions"><button class="ghost" data-copy>Copy</button></div>
-      </details>`;
-    out.querySelector('[data-copy]').addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(json);
-        toast('Copied');
-      } catch {
-        out.querySelector('textarea').select();
-      }
-    });
+    showAddressShare(out, sub, buddy);
   } catch (err) {
     toast(`Couldn’t turn on notifications: ${err.message}`);
   }
+}
+
+// ---- Sending this phone's address to whoever runs the GitHub reminders ----
+function addressCode(sub) {
+  const payload = { n: ACCOUNT?.displayName || state.profileName || 'Someone', s: sub.toJSON() };
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  return 'SR1.' + btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function showAddressShare(out, sub, buddy = false) {
+  const who = ACCOUNT?.displayName || state.profileName || 'me';
+  const admin = ADMIN_NAME || 'the person who set up the app';
+  const code = addressCode(sub);
+  const message =
+    `Skin Ritual notification address for ${who}\n\n${code}\n\n` +
+    `(${ADMIN_NAME || 'Setup'}: copy this whole message, then on your Mac run: pbpaste | node tools/add-subscription.mjs)`;
+  const mail = ADMIN_EMAIL
+    ? `<a class="ghost link-as-btn" href="mailto:${encodeURIComponent(ADMIN_EMAIL)}?subject=${encodeURIComponent('Skin Ritual notifications for ' + who)}&body=${encodeURIComponent(message)}">Email it</a>`
+    : '';
+  out.innerHTML = `
+    <div class="share-box">
+      <p class="small"><strong>Notifications are on.</strong>${buddy ? ' Buddy nudges will reach this phone.' : ''}</p>
+      ${
+        buddy
+          ? ''
+          : `<p class="small">One last step for reminders: send this phone’s address to <strong>${esc(admin)}</strong>. It’s not a password; it only lets the app’s reminders reach this phone.</p>
+      <div class="row-actions">
+        <button class="primary" data-share>Send my address${ADMIN_NAME ? ` to ${esc(ADMIN_NAME)}` : ''}</button>
+        ${mail}
+        <button class="ghost" data-copy>Copy</button>
+      </div>
+      <p class="muted small">Do this again if you reinstall the app or get a new phone.</p>`
+      }
+    </div>`;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(message);
+      toast('Copied. Paste it into a message.');
+    } catch {
+      toast('Couldn’t copy. Try Send instead.');
+    }
+  };
+  out.querySelector('[data-copy]')?.addEventListener('click', copy);
+  out.querySelector('[data-share]')?.addEventListener('click', () => {
+    // Called straight from the tap, so iPhone allows the share sheet.
+    if (!navigator.share) return copy();
+    navigator
+      .share({ title: 'Skin Ritual notifications', text: message })
+      .then(() => toast('Sent. Thank you!'))
+      .catch((e) => {
+        if (e.name !== 'AbortError') copy();
+      });
+  });
+}
+
+// When Settings opens, show the share option again if notifications are already on.
+async function restoreAddressShare(out) {
+  try {
+    if (!('PushManager' in window) || Notification.permission !== 'granted' || nudgesEnabled()) return;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub && state.settings.pushKeyUsed === vapidKey()) showAddressShare(out, sub);
+  } catch {}
 }
 
 // Keep the nudge server up to date with this phone's push address.
