@@ -18,7 +18,8 @@ const isSeasonal = (p) => (p.summer ?? p.all) !== (p.winter ?? p.all);
 export function editCount() {
   const e = state.settings.routineEdits;
   if (!e) return 0;
-  return Object.keys(e.steps || {}).length + (Array.isArray(e.retinalDays) ? 1 : 0);
+  const added = Object.values(e.added || {}).reduce((n, list) => n + list.length, 0);
+  return Object.keys(e.steps || {}).length + added + (Array.isArray(e.retinalDays) ? 1 : 0);
 }
 
 function commit(msg) {
@@ -55,13 +56,14 @@ function showOverview(host, close) {
           ${id === 'retinal' ? retinalDaysPicker() : ''}
           <ul class="ed-steps">${r.steps
             .map(
-              (st) => `<li><button class="ed-step ${st.off ? 'is-off' : ''}" data-step="${st.id}">
+              (st) => `<li><button class="ed-step ${st.off ? 'is-off' : ''}" ${st.added ? `data-added="${id}:${st.id}"` : `data-step="${st.id}"`}>
                 <span class="ed-name">${esc(st.product)}${st.only ? ` <span class="ed-tag">${st.only} only</span>` : ''}</span>
                 <span class="ed-meta">${st.off ? 'Turned off' : esc(portionText(st.portion))}</span>
-                ${st.edited ? '<span class="ed-badge">Changed</span>' : ''}
+                ${st.added ? '<span class="ed-badge">Added</span>' : st.edited ? '<span class="ed-badge">Changed</span>' : ''}
               </button></li>`
             )
             .join('')}</ul>
+          <button class="ed-add" data-add="${id}">+ Add a step</button>
         </section>`;
       })
       .join('')}
@@ -69,9 +71,16 @@ function showOverview(host, close) {
 
   host.querySelector('[data-close]').addEventListener('click', close);
   host.querySelectorAll('[data-step]').forEach((b) => b.addEventListener('click', () => showStep(host, b.dataset.step, close)));
+  host.querySelectorAll('[data-added]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const [rid, sid] = b.dataset.added.split(':');
+      showAdded(host, rid, sid, close);
+    })
+  );
+  host.querySelectorAll('[data-add]').forEach((b) => b.addEventListener('click', () => showAdded(host, b.dataset.add, null, close)));
   host.querySelector('[data-reset-all]')?.addEventListener('click', () => {
     if (!confirm('Undo all your changes and go back to your original routine?')) return;
-    state.settings.routineEdits = { steps: {} };
+    state.settings.routineEdits = { steps: {}, added: {} };
     commit('Back to your original routine');
     showOverview(host, close);
   });
@@ -201,6 +210,127 @@ function showStep(host, id, close) {
       }
     }
     commit('Saved');
+    back();
+  });
+}
+
+// ---------- Add or edit a step of your own ----------
+const AREAS = ['Face', 'Face & neck', 'Under-eyes', 'Lips', 'Body', 'Arms & feet'];
+const WAITS = [0, 15, 30, 45, 60, 90, 120, 180, 300];
+const waitLabel = (v) => (v === 0 ? 'No wait' : v < 60 ? `${v} seconds` : v % 60 ? `${Math.floor(v / 60)} min ${v % 60} s` : `${v / 60} min`);
+
+const ACTIVE = /\b(acid|aha|bha|pha|glycolic|lactic|mandelic|salicylic|kojic|vitamin c|ascorbic|peel|exfoliat|retinol|retinal|retinoid|tretinoin|adapalene|benzoyl)\b/i;
+const SUNSCREEN = /sunscreen|spf|sun cream|sunblock/i;
+
+function addedWarning(rid, product, afterId, steps) {
+  const warnings = [];
+  if (product && ACTIVE.test(product)) {
+    if (rid === 'retinal') warnings.push('Acids, exfoliants or a second retinoid on a retinal night can irritate. Your plan keeps them on separate nights.');
+    if (rid === 'preGym') warnings.push('Your plan avoids acid products before exercise, when skin is warm and sweaty.');
+  }
+  if ((rid === 'preGym' || rid === 'postGym') && product && !SUNSCREEN.test(product)) {
+    const idx = afterId === '__start' ? -1 : steps.findIndex((x) => x.id === afterId);
+    if (idx >= 0 && SUNSCREEN.test(steps[idx].product) && steps.slice(idx + 1).every((x) => !SUNSCREEN.test(x.product) || x.only)) {
+      warnings.push('Sunscreen usually goes last in the morning, so it isn’t disturbed. Consider putting this before it.');
+    }
+  }
+  return warnings;
+}
+
+function showAdded(host, rid, sid, close) {
+  const e = edits();
+  e.added ??= {};
+  const list = (e.added[rid] ??= []);
+  const existing = sid ? list.find((a) => a.id === sid) : null;
+  const routine = ROUTINES[rid];
+  const others = routine.steps.filter((x) => x.id !== sid);
+
+  // Default position: after the last step, or just before sunscreen in the morning
+  let defAfter = others.length ? others[others.length - 1].id : '__start';
+  const sunIdx = others.findIndex((x) => SUNSCREEN.test(x.product) && !x.only);
+  if (!existing && (rid === 'preGym' || rid === 'postGym') && sunIdx >= 0) defAfter = sunIdx === 0 ? '__start' : others[sunIdx - 1].id;
+  const after = existing?.after ?? defAfter;
+
+  host.innerHTML = `
+    <header class="sheet-head"><button class="link-btn" data-ed-back>‹ Back</button><button class="link-btn" data-ed-save>${existing ? 'Save' : 'Add'}</button></header>
+    <h2 class="h2">${existing ? esc(existing.product) : `New step in ${esc(routine.name)}`}</h2>
+
+    <label class="field">Product
+      <input type="text" data-ed-product value="${esc(existing?.product || '')}" placeholder="e.g. Hyaluronic acid serum" autocomplete="off">
+    </label>
+    <label class="field">Where it goes
+      <input type="text" data-ed-area list="ed-areas" value="${esc(existing?.area || 'Face')}" autocomplete="off">
+      <datalist id="ed-areas">${AREAS.map((a) => `<option value="${esc(a)}">`).join('')}</datalist>
+    </label>
+    <label class="field">Amount
+      <input type="text" data-ed-portion value="${esc(existing?.portion?.all || '')}" placeholder="e.g. 2 drops" autocomplete="off">
+    </label>
+    <label class="field">How to apply (optional)
+      <textarea rows="2" data-ed-how placeholder="e.g. Pat gently onto damp skin">${esc(existing?.how || '')}</textarea>
+    </label>
+    <label class="field">Position
+      <select data-ed-after>
+        <option value="__start" ${after === '__start' ? 'selected' : ''}>First step</option>
+        ${others.map((x) => `<option value="${x.id}" ${x.id === after ? 'selected' : ''}>After ${esc(x.product)}</option>`).join('')}
+      </select>
+    </label>
+    <div class="dry-pair">
+      <label class="field">Drying time after
+        <select data-ed-wait>${WAITS.map((v) => `<option value="${v}" ${v === (existing?.wait || 0) ? 'selected' : ''}>${waitLabel(v)}</option>`).join('')}</select>
+      </label>
+      <label class="field">When to use it
+        <select data-ed-only>
+          <option value="" ${!existing?.only ? 'selected' : ''}>All year</option>
+          <option value="summer" ${existing?.only === 'summer' ? 'selected' : ''}>Summer only</option>
+          <option value="winter" ${existing?.only === 'winter' ? 'selected' : ''}>Winter only</option>
+        </select>
+      </label>
+    </div>
+    <div class="ed-warnings" aria-live="polite"></div>
+    <p class="muted small">Not sure where it goes? Ask in the Ask tab before adding it.</p>
+    ${existing ? '<div class="row-actions"><button class="ghost danger" data-ed-delete>Remove this step</button></div>' : ''}`;
+
+  const q = (s) => host.querySelector(s);
+  const back = () => showOverview(host, close);
+  const check = () => {
+    const w = addedWarning(rid, q('[data-ed-product]').value.trim(), q('[data-ed-after]').value, others);
+    q('.ed-warnings').innerHTML = w.map((t) => `<p class="ed-warn">${esc(t)}</p>`).join('');
+  };
+  q('[data-ed-product]').addEventListener('input', check);
+  q('[data-ed-after]').addEventListener('change', check);
+  check();
+  q('[data-ed-back]').addEventListener('click', back);
+  if (!existing) q('[data-ed-product]').focus();
+
+  q('[data-ed-delete]')?.addEventListener('click', () => {
+    if (!confirm(`Remove ${existing.product} from ${routine.name}?`)) return;
+    // Anything placed after this step moves up to its spot
+    for (const a of list) if (a.after === existing.id) a.after = existing.after;
+    e.added[rid] = list.filter((a) => a.id !== existing.id);
+    commit('Step removed');
+    back();
+  });
+
+  q('[data-ed-save]').addEventListener('click', () => {
+    const product = q('[data-ed-product]').value.trim();
+    if (!product) {
+      toast('Add a product name first.');
+      q('[data-ed-product]').focus();
+      return;
+    }
+    const step = {
+      id: existing?.id || 'u-' + crypto.randomUUID().slice(0, 8),
+      product,
+      area: q('[data-ed-area]').value.trim(),
+      portion: { all: q('[data-ed-portion]').value.trim() },
+      how: q('[data-ed-how]').value.trim(),
+      wait: +q('[data-ed-wait]').value || 0,
+      only: q('[data-ed-only]').value || undefined,
+      after: q('[data-ed-after]').value,
+    };
+    if (existing) Object.assign(existing, step);
+    else list.push(step);
+    commit(existing ? 'Saved' : `${product} added`);
     back();
   });
 }

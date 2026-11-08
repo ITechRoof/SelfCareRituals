@@ -1,5 +1,5 @@
 // Bump VERSION whenever you change any file so phones pick up the update.
-const VERSION = 'skin-ritual-v13';
+const VERSION = 'skin-ritual-v14';
 const SHELL = [
   './',
   './index.html',

@@ -518,6 +518,11 @@ button:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
 .ed-badge { grid-row: 1 / span 2; grid-column: 2; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: var(--sc-accent); color: var(--sc-on); }
 .ed-tag { font-size: 11px; font-weight: 400; color: var(--sc-muted); }
 .ed-step.is-off .ed-name { text-decoration: line-through; opacity: 0.6; }
+.ed-add {
+  width: 100%; margin-top: 8px; padding: 10px 12px; border-radius: var(--radius-sm);
+  border: 1.5px dashed var(--sc-line); background: transparent; color: var(--sc-fg); font-weight: 600; text-align: left;
+}
+.ed-warnings .ed-warn { margin-top: 6px; }
 .ed-days .days { margin: 6px 0 4px; }
 .ed-days p { margin: 0; }
 .ed-days .day span { background: var(--sc-card); border-color: var(--sc-line); color: var(--sc-fg); }

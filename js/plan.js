@@ -24,7 +24,9 @@ export const findBaseStep = (id) => {
 
 // Personal edits, saved on this phone only (state.settings.routineEdits):
 //   { steps: { <stepId>: { product, portion: {all}|{summer,winter}, how, off } },
+//     added: { <routineId>: [ { id: 'u-…', product, area, portion: {all}, how, wait, only, after } ] },
 //     retinalDays: [1, 4] }
+// `after` is the id of the step it follows ('__start' = first). If that step is gone, it goes last.
 // Anything not edited keeps following the admin's plan, including later updates.
 export function applyEdits(edits = {}) {
   const r = structuredClone(BASE);
@@ -37,6 +39,25 @@ export function applyEdits(edits = {}) {
       if (e.how) st.how = e.how;
       if (e.off) st.off = true;
       st.edited = true;
+    }
+  }
+  for (const [rid, list] of Object.entries(edits.added || {})) {
+    const routine = r[rid];
+    if (!routine) continue;
+    for (const a of list) {
+      const step = {
+        id: a.id,
+        product: a.product,
+        area: a.area || '',
+        portion: { all: a.portion?.all || '' },
+        how: a.how || '',
+        ...(a.wait ? { wait: { summer: a.wait, winter: a.wait, label: `Let the ${a.product} dry` } } : {}),
+        ...(a.only ? { only: a.only } : {}),
+        added: true,
+      };
+      const at = a.after === '__start' ? -1 : routine.steps.findIndex((x) => x.id === a.after);
+      if (a.after !== '__start' && at === -1) routine.steps.push(step);
+      else routine.steps.splice(at + 1, 0, step);
     }
   }
   if (Array.isArray(edits.retinalDays) && r.retinal && r.rest) {
@@ -61,6 +82,17 @@ export function describeEdits(edits = {}) {
     if (e.portion) parts.push(`portion changed to ${e.portion.all ?? `summer: ${e.portion.summer}, winter: ${e.portion.winter}`}`);
     if (e.how) parts.push(`how to apply changed to "${e.how}"`);
     if (parts.length) lines.push(`- ${routine?.name}: "${base.product}" ${parts.join('; ')}`);
+  }
+  for (const [rid, list] of Object.entries(edits.added || {})) {
+    const routine = ROUTINES[rid] || BASE[rid];
+    for (const a of list) {
+      const idx = routine?.steps.findIndex((x) => x.id === a.id) ?? -1;
+      const prev = idx > 0 ? routine.steps[idx - 1].product : null;
+      lines.push(
+        `- ${BASE[rid]?.name}: added "${a.product}"${a.area ? ` on ${a.area}` : ''}${a.portion?.all ? `, ${a.portion.all}` : ''}` +
+          `${prev ? `, after "${prev}"` : ', as the first step'}${a.only ? ` (${a.only} only)` : ''}${a.how ? `. How: ${a.how}` : ''}`
+      );
+    }
   }
   if (Array.isArray(edits.retinalDays) && BASE.retinal) {
     lines.push(`- ${BASE.retinal.name} moved to: ${edits.retinalDays.map((d) => DAY_NAMES[d]).join(', ') || 'none'} (other evenings are ${BASE.rest.name})`);

@@ -111,18 +111,25 @@ People can edit their own routine in the app (**Settings > My routine**). Edits 
 
 ```js
 { steps: { 'post-anr': { product, portion: { all } | { summer, winter }, how, off: true } },
+  added: { postGym: [ { id: 'u-1a2b3c4d', product, area, portion: { all }, how, wait, only, after } ] },
   retinalDays: [2, 5] }
 ```
+
+`after` is the id of the step an added step follows (`'__start'` means first). If that step disappears in a later plan update, the added step goes to the end. Added steps have ids starting `u-`, so they show up in logs and per-step timings like any other step.
 
 - **Merging:** `applyEdits()` in `js/plan.js` layers them over the decrypted plan at sign-in and after every edit.
   - Fields a person hasn't touched keep following the admin's plan, including later updates.
   - Edits to a step id that no longer exists are ignored.
 - **Retinal nights:** changing them puts every other evening on the rest routine.
 - **AI chat:** `describeEdits()` turns the edits into words for the chat's system prompt.
-- **Warnings, never blocking:** retinal nights back to back, more retinal nights than the plan, no retinal nights, or turning off a sunscreen step.
+- **Warnings, never blocking:**
+  - retinal nights back to back, more retinal nights than the plan, or none
+  - turning off a sunscreen step
+  - an acid, exfoliant or retinoid added to a retinal night or before the gym (a keyword check in `js/editor.js`)
+  - a step placed after sunscreen in the morning
 - **You can't see their edits.** If someone asks why their routine looks different from yours, their edits are the reason. **Undo all my changes** resets them.
 
-Ideas for later: adding new steps, reordering, and syncing edits across devices (needs the server).
+Ideas for later: reordering the plan's own steps, smarter rule checks from each person's plan text, and syncing edits across devices (needs the server).
 
 ## Data recorded
 
@@ -202,7 +209,7 @@ Rules live in `worker/wrangler.toml`: `NUDGE_COOLDOWN_DAYS`, `QUIET_START` and `
 - **Old commits:** check the repo's early history doesn't still contain the plain-text routine from before encryption. If it does, delete and recreate the repo, or force-push a fresh history.
 
 **App structure:**
-- **Flexible routines:** allow any number of routines and slots per person, instead of the fixed four.
+- **Flexible routines:** allow any number of routines and slots per person, instead of the fixed four. Within a routine, people can already add their own steps.
 - **Steps per person:** let each person set step-level drying times in their routine file, as well as in the app's Settings.
 
 **Housekeeping:**
