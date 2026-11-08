@@ -1,7 +1,7 @@
 import { ROUTINES, resolveSteps, suggestRoutine, routineLabel, isRetinalDay } from './plan.js';
 import { state, addLog, todaysLogs, streak, dayStatus } from './store.js';
 import { getConditions, describeConditions } from './weather.js';
-import { $, esc, dateKey, fmtDur } from './util.js';
+import { $, esc, dateKey, dayKey, skinDate, fmtDur } from './util.js';
 import { checkin } from './nudge.js';
 
 const DROP = 'M60 4 C60 4 14 58 14 90 A46 46 0 0 0 106 90 C106 58 60 4 60 4 Z';
@@ -68,6 +68,7 @@ export async function openRunner({ routine = null, onDone } = {}) {
     index: 0,
     swaps: {},
     skipped: [],
+    timeline: {},
     startedAt: Date.now(),
     onDone,
   };
@@ -170,7 +171,7 @@ function renderIntro() {
       : null;
   root().innerHTML = `${header()}
     <div class="runner-body" tabindex="-1">
-      <h1 class="runner-title">${esc(routineLabel(run.routine, new Date(), state.settings))}</h1>
+      <h1 class="runner-title">${esc(routineLabel(run.routine, skinDate(), state.settings))}</h1>
       <p class="runner-lede">${list.length} steps${waitSecs ? `, with ${dur(waitSecs)} of drying time between them` : ''}.</p>
       <div class="season-line">
         <span class="season-dot" data-season="${c.season}"></span>
@@ -212,6 +213,7 @@ function progressBar(list) {
 function renderStep() {
   const list = steps();
   const s = list[run.index];
+  mark(s.id).startedAt ??= Date.now();
   root().innerHTML = `${header(`Step ${run.index + 1} of ${list.length}`)}
     ${progressBar(list)}
     <div class="runner-body step" tabindex="-1">
@@ -232,7 +234,13 @@ function renderStep() {
   const q = (sel) => root().querySelector(sel);
   q('[data-next]').addEventListener('click', () => {
     unlockAudio();
+    const t = mark(s.id);
+    t.doneAt = Date.now();
+    delete t.skipped;
     if (s.wait) {
+      t.waitPlannedSec = s.wait;
+      t.waitStartedAt = Date.now();
+      t.waitAddedSec = 0;
       run.phase = 'wait';
       run.waitTotal = s.wait;
       run.waitEnd = Date.now() + s.wait * 1000;
@@ -242,6 +250,7 @@ function renderStep() {
   });
   q('[data-skip]').addEventListener('click', () => {
     run.skipped.push(s.id);
+    Object.assign(mark(s.id), { skipped: true, doneAt: Date.now() });
     advance();
   });
   q('[data-prev]').addEventListener('click', () => {
@@ -252,6 +261,22 @@ function renderStep() {
     run.swaps[s.id] = true;
     render();
   });
+}
+
+// Per-step timeline for later analysis (not shown to the user).
+function mark(stepId) {
+  return (run.timeline[stepId] ??= {});
+}
+
+function endWait() {
+  const s = steps()[run.index];
+  const t = mark(s.id);
+  const now = Date.now();
+  t.waitEndedAt = now;
+  t.waitedSec = Math.round((now - t.waitStartedAt) / 1000);
+  t.waitCutShort = now < run.waitEnd - 1000; // tapped Skip wait before the timer ran out
+  clearInterval(tick);
+  advance();
 }
 
 function advance() {
@@ -312,10 +337,7 @@ function renderWait() {
         chime();
         const at = run.index;
         setTimeout(() => {
-          if (run && run.phase === 'wait' && run.index === at) {
-            clearInterval(tick);
-            advance();
-          }
+          if (run && run.phase === 'wait' && run.index === at) endWait();
         }, 1400);
       }
     } else time.textContent = fmtDur(left);
@@ -327,26 +349,25 @@ function renderWait() {
     run.waitEnd = base + 60000;
     run.waitTotal = Math.max(run.waitTotal, (run.waitEnd - Date.now()) / 1000);
     run.chimed = false;
+    mark(steps()[run.index].id).waitAddedSec += 60;
     go.textContent = 'Skip wait';
     update();
   });
-  go.addEventListener('click', () => {
-    clearInterval(tick);
-    advance();
-  });
+  go.addEventListener('click', endWait);
 }
 
 function finish() {
   const r = ROUTINES[run.routine];
   addLog({
-    date: dateKey(),
+    date: dayKey(),
     routine: run.routine,
     slot: r.slot,
     season: run.conditions.season,
     startedAt: run.startedAt,
     finishedAt: Date.now(),
-    skipped: run.skipped,
+    skipped: [...new Set(run.skipped)],
     swaps: Object.keys(run.swaps),
+    steps: steps().map((st) => ({ id: st.id, ...(st.swapped ? { swapped: true } : {}), ...run.timeline[st.id] })),
   });
   run.phase = 'done';
   render();
@@ -354,7 +375,7 @@ function finish() {
 }
 
 function doneLine(n) {
-  const s = dayStatus(dateKey());
+  const s = dayStatus(dayKey());
   if (s.am && s.pm) return n > 1 ? `Morning and evening both done. That’s a ${n}-day streak.` : 'Morning and evening both done today.';
   if (s.pm) return 'Evening done. The morning routine wasn’t logged today.';
   if (s.am) return 'Morning done. Evening routine is next.';
@@ -367,7 +388,7 @@ function renderDone() {
   root().innerHTML = `${header()}
     <div class="runner-body done" tabindex="-1">
       <svg class="drop small" viewBox="0 0 120 140" aria-hidden="true"><path d="${DROP}" class="drop-full"/></svg>
-      <h1 class="runner-title">${esc(routineLabel(run.routine, new Date(), state.settings))} logged.</h1>
+      <h1 class="runner-title">${esc(routineLabel(run.routine, skinDate(), state.settings))} logged.</h1>
       <p class="runner-lede">Took ${mins} min. ${doneLine(n)}</p>
       ${run.skipped.length ? `<p class="muted">Skipped ${run.skipped.length} step${run.skipped.length > 1 ? 's' : ''}.</p>` : ''}
     </div>

@@ -1,4 +1,4 @@
-import { dateKey, parseKey } from './util.js';
+import { dateKey, dayKey, skinDate, parseKey } from './util.js';
 import { isRetinalDay } from './plan.js';
 
 // Each user's data lives under its own key: skin-ritual:v2:<user id>
@@ -103,12 +103,22 @@ export function resetAll() {
 }
 
 export function addLog(entry) {
-  state.logs.push({ id: crypto.randomUUID(), ...entry });
+  const now = new Date();
+  state.logs.push({
+    id: crypto.randomUUID(),
+    ...entry,
+    loggedAt: now.getTime(),
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone, // e.g. Europe/London
+    tzOffsetMin: -now.getTimezoneOffset(), // e.g. 60 during British Summer Time
+  });
   save();
 }
 
 export const logsOn = (key) => state.logs.filter((l) => l.date === key);
-export const todaysLogs = () => logsOn(dateKey());
+export const todaysLogs = () => logsOn(dayKey());
+
+// Hand ticks made before times were recorded properly also had made-up times.
+export const timeEstimated = (l) => l.timeEstimated ?? !!l.manual;
 
 export function countsByDate() {
   const m = new Map();
@@ -129,7 +139,7 @@ export function dayStatus(key) {
 }
 
 function runLength(test) {
-  const d = new Date();
+  const d = skinDate();
   if (!test(dayStatus(dateKey(d)))) d.setDate(d.getDate() - 1); // today can still be finished
   let n = 0;
   while (test(dayStatus(dateKey(d)))) {
@@ -151,7 +161,7 @@ export const streak = () => streaks().full;
 // Count of the last `days` days (including today) with morning / evening done.
 export function completion(days = 30) {
   let am = 0, pm = 0;
-  const d = new Date();
+  const d = skinDate();
   for (let i = 0; i < days; i++) {
     const s = dayStatus(dateKey(d));
     if (s.am) am++;
@@ -173,9 +183,16 @@ export function setSlotDone(key, slot, done) {
   if (state.logs.some(match)) return;
   const d = parseKey(key);
   const routine = slot === 'pre' ? 'preGym' : slot === 'am' ? 'postGym' : isRetinalDay(d) ? 'retinal' : 'rest';
+  // Use the real time if it's ticked on the day, in that part of the day.
+  // Otherwise (a past day, or the morning ticked in the evening) record a typical time
+  // and mark it as estimated.
+  const now = new Date();
+  const h = now.getHours();
+  const isEvening = h >= state.settings.eveningHour || h < 4;
+  const realTime = key === dayKey() && (slot === 'pm' ? isEvening : !isEvening);
   const hour = slot === 'pre' ? 7.5 : slot === 'am' ? 10.5 : 21.5;
-  const ts = d.getTime() + hour * 3600000;
-  addLog({ date: key, routine, slot: slot === 'pm' ? 'pm' : 'am', season: null, startedAt: ts, finishedAt: ts, manual: true, skipped: [], swaps: [] });
+  const ts = realTime ? now.getTime() : d.getTime() + hour * 3600000;
+  addLog({ date: key, routine, slot: slot === 'pm' ? 'pm' : 'am', season: null, startedAt: null, finishedAt: ts, timeEstimated: !realTime, manual: true, skipped: [], swaps: [] });
 }
 
 // ---------- Photos (IndexedDB) ----------

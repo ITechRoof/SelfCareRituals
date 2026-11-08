@@ -1,17 +1,17 @@
-import { state, save, dayStatus, streaks, completion, logsOn, setSlotDone } from './store.js';
+import { state, save, dayStatus, timeEstimated, streaks, completion, logsOn, setSlotDone } from './store.js';
 import { ROUTINES, routineLabel, isRetinalDay } from './plan.js';
 import { sheet, closeSheet } from './photos.js';
 import { checkin } from './nudge.js';
-import { esc, dateKey, parseKey, addDays, weekStart, fmtDate, fmtClock, MONTH_SHORT, DAY_SHORT, toast } from './util.js';
+import { esc, dateKey, dayKey, skinDate, parseKey, addDays, weekStart, fmtDate, fmtClock, MONTH_SHORT, DAY_SHORT, toast } from './util.js';
 
 const WEEKS = 16;
 
 export function renderProgress(el) {
   const st = streaks();
   const c30 = completion(30);
-  const thisWeek = weekStart();
+  const thisWeek = weekStart(skinDate());
   const first = addDays(thisWeek, -(WEEKS - 1) * 7);
-  const todayKey = dateKey();
+  const todayKey = dayKey();
   const gymDays = state.settings.gymDays;
 
   // ---- Heatmap: each day split into a morning half and an evening half ----
@@ -127,7 +127,7 @@ export function renderProgress(el) {
           ? `<ul class="log-list">${recent
               .map(
                 (l) => `<li><span>${esc(routineLabel(l.routine, new Date(l.finishedAt), state.settings))}${l.manual ? ' <span class="muted">(ticked)</span>' : ''}</span>
-                <span class="muted">${fmtDate(new Date(l.finishedAt))}${l.manual ? '' : `, ${fmtClock(l.finishedAt)}`}</span></li>`
+                <span class="muted">${fmtDate(parseKey(l.date))}${timeEstimated(l) ? '' : `, ${fmtClock(l.finishedAt)}`}</span></li>`
               )
               .join('')}</ul>`
           : '<p class="muted">Finish a routine and it will show up here.</p>'
@@ -164,7 +164,7 @@ function toggle(key, slot, after) {
     if (guided && !confirm('This was logged by a guided routine. Remove it?')) return;
   }
   setSlotDone(key, slot, !on);
-  checkin(!on && key === dateKey());
+  checkin(!on && key === dayKey());
   toast(on ? 'Unticked' : 'Ticked');
   after();
 }
@@ -198,7 +198,7 @@ function openDay(key, after) {
           }
         }
         setSlotDone(key, i.dataset.slot, want);
-        checkin(want && key === dateKey());
+        checkin(want && key === dayKey());
       }
     })
   );

@@ -1,4 +1,4 @@
-import { state, save, todaysLogs, streak, allPhotos, putPhoto, resetAll, storageWorks, initStore } from './store.js';
+import { state, save, todaysLogs, timeEstimated, streak, allPhotos, putPhoto, resetAll, storageWorks, initStore } from './store.js';
 import { ROUTINES, ACCOUNT, resolveSteps, suggestRoutine, routineLabel, isRetinalDay, setPlan } from './plan.js';
 import { autoUnlock, unlock, lockNow } from './lock.js';
 import { checkin, registerPush, testPush, nudgesEnabled } from './nudge.js';
@@ -8,7 +8,7 @@ import { openRunner } from './runner.js';
 import { renderProgress } from './progress.js';
 import { renderPhotos, setPhotoArea, sheet, closeSheet } from './photos.js';
 import { renderAsk } from './ask.js';
-import { $, $$, esc, toast, download, fmtClock, fmtDur, dateKey, DAY_SHORT, DAY_LONG, MONTH_SHORT } from './util.js';
+import { $, $$, esc, toast, download, fmtClock, fmtDur, dateKey, skinDate, DAY_SHORT, DAY_LONG, MONTH_SHORT } from './util.js';
 
 const VIEWS = { today: renderToday, progress: renderProgress, photos: renderPhotos, ask: renderAsk, settings: renderSettings };
 
@@ -28,6 +28,7 @@ function route() {
 // ---------------- Today ----------------
 async function renderToday(el) {
   const now = new Date();
+  const day = skinDate(now); // after midnight still shows last night
   const s = state.settings;
   const logs = todaysLogs();
   const due = suggestRoutine(now, s, logs);
@@ -42,11 +43,11 @@ async function renderToday(el) {
     ? slot === 'am'
       ? 'Morning routine done. See you this evening.'
       : 'Tonight’s routine is done. Sleep well.'
-    : `${routineLabel(due, now, s)} is next.`;
+    : `${routineLabel(due, day, s)} is next.`;
 
   const conditions = await getConditions();
   const steps = resolveSteps(due, conditions.season, {}, s.waits);
-  const pmDue = isRetinalDay(now) ? 'retinal' : 'rest';
+  const pmDue = isRetinalDay(day) ? 'retinal' : 'rest';
 
   const pmRoutine = pmLogs[0]?.routine || pmDue;
   const tile = (label, done, scene, what) => `
@@ -56,15 +57,15 @@ async function renderToday(el) {
       <span class="slot-what">${esc(what)}</span>
     </div>`;
   const amWhat = amLogs.length
-    ? amLogs.map((l) => `${routineLabel(l.routine, now, s)}, ${fmtClock(l.finishedAt)}`).join(', then ')
-    : routineLabel('postGym', now, s);
-  const pmWhat = pmLogs.length ? `${ROUTINES[pmRoutine].name}, ${fmtClock(pmLogs[0].finishedAt)}` : ROUTINES[pmDue].name;
+    ? amLogs.map((l) => `${routineLabel(l.routine, day, s)}${timeEstimated(l) ? '' : `, ${fmtClock(l.finishedAt)}`}`).join(', then ')
+    : routineLabel('postGym', day, s);
+  const pmWhat = pmLogs.length ? `${ROUTINES[pmRoutine].name}${timeEstimated(pmLogs[0]) ? '' : `, ${fmtClock(pmLogs[0].finishedAt)}`}` : ROUTINES[pmDue].name;
 
   el.innerHTML = `
     <section class="scene-card" data-scene="${ROUTINES[due].tone}">
       <svg class="scene-drop" viewBox="0 0 120 140" aria-hidden="true"><path d="M60 4 C60 4 14 58 14 90 A46 46 0 0 0 106 90 C106 58 60 4 60 4 Z"/></svg>
       <div class="hero-top">
-        <p class="eyebrow-date">${DAY_LONG[now.getDay()]} ${now.getDate()} ${MONTH_SHORT[now.getMonth()]}</p>
+        <p class="eyebrow-date">${DAY_LONG[day.getDay()]} ${day.getDate()} ${MONTH_SHORT[day.getMonth()]}</p>
         <button class="weather-chip" aria-label="Weather and season settings">
           <span class="season-dot" data-season="${conditions.season}"></span>
           ${conditions.weather ? `${conditions.weather.temp}°C, ` : ''}${conditions.season === 'summer' ? 'summer care' : 'winter care'}
@@ -87,7 +88,7 @@ async function renderToday(el) {
     </section>
 
     <section class="panel" data-scene-accent="${ROUTINES[due].tone}">
-      <h2 class="h2">${esc(routineLabel(due, now, s))} order</h2>
+      <h2 class="h2">${esc(routineLabel(due, day, s))} order</h2>
       <ol class="order">${steps
         .map(
           (st) => `<li><span class="order-name">${esc(st.product)}</span><span class="order-meta">${esc(st.portion)}${

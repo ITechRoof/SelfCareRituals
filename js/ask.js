@@ -1,7 +1,7 @@
 import { state, save, logsOn } from './store.js';
 import { PLAN_TEXT, routineLabel, suggestRoutine } from './plan.js';
 import { getConditions, describeConditions } from './weather.js';
-import { esc, miniMarkdown, dateKey, addDays, weekStart, fmtDate, DAY_LONG } from './util.js';
+import { esc, miniMarkdown, dateKey, dayKey, skinDate, addDays, weekStart, fmtDate, DAY_LONG } from './util.js';
 
 const SUGGESTIONS = [
   'Why do I wait between some steps?',
@@ -15,16 +15,17 @@ let lastError = '';
 
 async function systemPrompt() {
   const now = new Date();
+  const day = skinDate(now);
   const c = await getConditions();
   const s = state.settings;
   const recent = [...Array(14)]
     .map((_, i) => {
-      const d = addDays(now, -i);
+      const d = addDays(day, -i);
       const logs = logsOn(dateKey(d));
       return `${fmtDate(d)}: ${logs.length ? logs.map((l) => routineLabel(l.routine, d, s) + (l.skipped?.length ? ` (skipped ${l.skipped.length})` : '') + (l.swaps?.length ? ' (used the gentler alternative)' : '')).join(', ') : 'nothing logged'}`;
     })
     .join('\n');
-  const notes = state.notes[dateKey(weekStart())] || '';
+  const notes = state.notes[dateKey(weekStart(day))] || '';
   const w = c.weather;
 
   return `You are the assistant inside the user's personal skincare routine app. Help them follow and understand their own plan below, troubleshoot it, and stay motivated.
@@ -32,9 +33,9 @@ async function systemPrompt() {
 ${PLAN_TEXT}
 
 TODAY
-${DAY_LONG[now.getDay()]} ${now.toLocaleString()}. Gym days: ${s.gymDays.map((d) => DAY_LONG[d]).join(', ') || 'none set'}.
+${DAY_LONG[day.getDay()]} (local time ${now.toLocaleString()}). Gym days: ${s.gymDays.map((d) => DAY_LONG[d]).join(', ') || 'none set'}.
 Season mode: ${describeConditions(c)}${w ? `. Now ${w.temp}°C, humidity ${w.humidity}%, today ${w.min}–${w.max}°C, UV max ${w.uv}` : ''}.
-Routine most likely due now: ${routineLabel(suggestRoutine(now, s, logsOn(dateKey())), now, s)}.
+Routine most likely due now: ${routineLabel(suggestRoutine(now, s, logsOn(dayKey())), day, s)}.
 
 LAST 14 DAYS
 ${recent}

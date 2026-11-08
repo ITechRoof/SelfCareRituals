@@ -20,6 +20,15 @@ export const weekStart = (d = new Date()) => {
   return addDays(x, -((x.getDay() + 6) % 7));
 };
 
+// The "skincare day" starts at 4am, so a routine at 00:30 counts as the night before.
+export const DAY_START_HOUR = 4;
+export const skinDate = (d = new Date()) => {
+  const x = new Date(d);
+  if (x.getHours() < DAY_START_HOUR) x.setDate(x.getDate() - 1);
+  return x;
+};
+export const dayKey = (d = new Date()) => dateKey(skinDate(d));
+
 export const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 export const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

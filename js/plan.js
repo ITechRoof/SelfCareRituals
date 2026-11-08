@@ -1,3 +1,5 @@
+import { skinDate, DAY_START_HOUR } from './util.js';
+
 // Routine logic. The routine itself (products, order, portions, waits) lives
 // encrypted per person in plans/ and is loaded after they sign in.
 // To edit one, change private/<name>.mjs and run: node tools/encrypt-plan.mjs <name>
@@ -14,20 +16,22 @@ export function setPlan(plan) {
 
 export const ROUTINE_ORDER = ['preGym', 'postGym', 'retinal', 'rest'];
 
-export function isRetinalDay(date = new Date()) {
+export function isRetinalDay(date = skinDate()) {
   return ROUTINES.retinal.days.includes(date.getDay());
 }
 
 // Pick the routine that is most likely due now.
 export function suggestRoutine(now, settings, todaysLogs) {
-  const slot = now.getHours() < settings.eveningHour ? 'am' : 'pm';
-  if (slot === 'pm') return isRetinalDay(now) ? 'retinal' : 'rest';
-  const gymDay = settings.gymDays.includes(now.getDay());
+  const h = now.getHours();
+  const day = skinDate(now); // after midnight still counts as the evening before
+  const slot = h >= DAY_START_HOUR && h < settings.eveningHour ? 'am' : 'pm';
+  if (slot === 'pm') return isRetinalDay(day) ? 'retinal' : 'rest';
+  const gymDay = settings.gymDays.includes(day.getDay());
   const didPre = todaysLogs.some((l) => l.routine === 'preGym');
   return gymDay && !didPre ? 'preGym' : 'postGym';
 }
 
-export function routineLabel(id, date = new Date(), settings) {
+export function routineLabel(id, date = skinDate(), settings) {
   const r = ROUTINES[id];
   if (id === 'postGym' && settings && !settings.gymDays.includes(date.getDay())) return r.altName;
   return r.name;
