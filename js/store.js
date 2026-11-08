@@ -8,6 +8,7 @@ const DEFAULTS = {
   settings: {
     gymDays: [1, 2, 3, 4, 5],
     eveningHour: 16,
+    palette: 'original', // original | pastel | luxe | spa | jewel
     seasonMode: 'auto', // auto | summer | winter
     summerThreshold: 18, // °C forecast high at or above this = summer care
     location: null, // { lat, lon, name }

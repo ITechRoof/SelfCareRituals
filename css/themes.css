@@ -1,0 +1,398 @@
+/* Theme options, chosen in Settings > Theme.
+   The original theme (Twilight) lives in styles.css; these override it. */
+
+[data-palette="pastel"] {
+    --paper:#FBF6FA;
+    --surface:#FFFFFF;
+    --ink:#33283A;
+    --muted:#7E7288;
+    --line:#F0E4EE;
+    --sea:#4FB495;
+    --gold:#D9A441;
+    --dawn:#EE8FAE;
+    --dusk:#A58BE6;
+    --heat-0:#F3EAF1;
+    --glow-a:rgb(238 143 174 / .18);
+    --glow-b:rgb(165 139 230 / .16);
+    --glow-c:rgb(79 180 149 / .10);
+   }
+[data-palette="pastel"] [data-scene="dawn"] {
+    --sc-a:#FFEAF1;
+    --sc-b:#FFD3E3;
+    --sc-c:#FFF0DD;
+    --sc-fg:#4D2A3B;
+    --sc-muted:rgb(77 42 59 / .65);
+    --sc-card:rgb(255 255 255 / 0.6);
+    --sc-line:rgb(77 42 59 / .12);
+    --sc-accent:#E3769A;
+    --sc-on:#FFFFFF;
+   }
+[data-palette="pastel"] [data-scene="sea"] {
+    --sc-a:#E2F7EF;
+    --sc-b:#D8ECFB;
+    --sc-c:#F2FBE6;
+    --sc-fg:#1F4A42;
+    --sc-muted:rgb(31 74 66 / .65);
+    --sc-card:rgb(255 255 255 / 0.6);
+    --sc-line:rgb(31 74 66 / .12);
+    --sc-accent:#3FA586;
+    --sc-on:#FFFFFF;
+   }
+[data-palette="pastel"] [data-scene="gold"] {
+    --sc-a:#F1EAFF;
+    --sc-b:#E2D5FF;
+    --sc-c:#FFEED6;
+    --sc-fg:#3A2D55;
+    --sc-muted:rgb(58 45 85 / .66);
+    --sc-card:rgb(255 255 255 / 0.6);
+    --sc-line:rgb(58 45 85 / .12);
+    --sc-accent:#B98A2E;
+    --sc-on:#FFFFFF;
+   }
+[data-palette="pastel"] [data-scene="dusk"] {
+    --sc-a:#EEE8FF;
+    --sc-b:#DCD2FF;
+    --sc-c:#FBE2F0;
+    --sc-fg:#3B2F63;
+    --sc-muted:rgb(59 47 99 / .66);
+    --sc-card:rgb(255 255 255 / 0.6);
+    --sc-line:rgb(59 47 99 / .12);
+    --sc-accent:#8C72DA;
+    --sc-on:#FFFFFF;
+   }
+[data-palette="luxe"] {
+    --paper:#F7F0EA;
+    --surface:#FFFCF9;
+    --ink:#3B2A24;
+    --muted:#8A7167;
+    --line:#EADBD0;
+    --sea:#B76E79;
+    --gold:#C49A5E;
+    --dawn:#D98F7E;
+    --dusk:#6E4B40;
+    --heat-0:#EFE4DB;
+    --glow-a:rgb(183 110 121 / .16);
+    --glow-b:rgb(196 154 94 / .14);
+    --glow-c:rgb(110 75 64 / .08);
+   }
+[data-palette="luxe"] [data-scene="dawn"] {
+    --sc-a:#FBE8DF;
+    --sc-b:#F2CFC6;
+    --sc-c:#FFF2DF;
+    --sc-fg:#4A2C26;
+    --sc-muted:rgb(74 44 38 / .66);
+    --sc-card:rgb(255 255 255 / 0.6);
+    --sc-line:rgb(74 44 38 / .12);
+    --sc-accent:#C2705F;
+    --sc-on:#FFFFFF;
+   }
+[data-palette="luxe"] [data-scene="sea"] {
+    --sc-a:#F7E6E1;
+    --sc-b:#EACBC4;
+    --sc-c:#FBF0E4;
+    --sc-fg:#4A2A2E;
+    --sc-muted:rgb(74 42 46 / .66);
+    --sc-card:rgb(255 255 255 / 0.6);
+    --sc-line:rgb(74 42 46 / .12);
+    --sc-accent:#A85F6B;
+    --sc-on:#FFFFFF;
+   }
+[data-palette="luxe"] [data-scene="gold"] {
+    --sc-a:#2A1D19;
+    --sc-b:#4A3027;
+    --sc-c:#8B6A43;
+    --sc-fg:#F8EBDC;
+    --sc-muted:rgb(248 235 220 / .72);
+    --sc-card:rgb(255 255 255 / .08);
+    --sc-line:rgb(255 255 255 / .15);
+    --sc-accent:#DDB97E;
+    --sc-on:#2A1D19;
+   }
+[data-palette="luxe"] [data-scene="dusk"] {
+    --sc-a:#38261F;
+    --sc-b:#5D3F35;
+    --sc-c:#9C6C5D;
+    --sc-fg:#F7E8E1;
+    --sc-muted:rgb(247 232 225 / .74);
+    --sc-card:rgb(255 255 255 / .09);
+    --sc-line:rgb(255 255 255 / .16);
+    --sc-accent:#E8B8A8;
+    --sc-on:#38261F;
+   }
+[data-palette="spa"] {
+    --paper:#F2F4EE;
+    --surface:#FFFFFD;
+    --ink:#22302A;
+    --muted:#68786E;
+    --line:#DDE3D6;
+    --sea:#4F7F5C;
+    --gold:#B8955A;
+    --dawn:#C98A6C;
+    --dusk:#557A87;
+    --heat-0:#E5E9DF;
+    --glow-a:rgb(79 127 92 / .14);
+    --glow-b:rgb(85 122 135 / .12);
+    --glow-c:rgb(184 149 90 / .10);
+   }
+[data-palette="spa"] [data-scene="dawn"] {
+    --sc-a:#F6EEE3;
+    --sc-b:#EFDACB;
+    --sc-c:#F8F3E2;
+    --sc-fg:#3D2E25;
+    --sc-muted:rgb(61 46 37 / .66);
+    --sc-card:rgb(255 255 255 / 0.6);
+    --sc-line:rgb(61 46 37 / .12);
+    --sc-accent:#B0714F;
+    --sc-on:#FFFFFF;
+   }
+[data-palette="spa"] [data-scene="sea"] {
+    --sc-a:#E7F0E5;
+    --sc-b:#D3E5DB;
+    --sc-c:#F3F5E4;
+    --sc-fg:#22382C;
+    --sc-muted:rgb(34 56 44 / .66);
+    --sc-card:rgb(255 255 255 / 0.6);
+    --sc-line:rgb(34 56 44 / .12);
+    --sc-accent:#477A55;
+    --sc-on:#FFFFFF;
+   }
+[data-palette="spa"] [data-scene="gold"] {
+    --sc-a:#1E2A25;
+    --sc-b:#2F4037;
+    --sc-c:#5F5B3F;
+    --sc-fg:#F1EEDF;
+    --sc-muted:rgb(241 238 223 / .72);
+    --sc-card:rgb(255 255 255 / .08);
+    --sc-line:rgb(255 255 255 / .15);
+    --sc-accent:#D8C08A;
+    --sc-on:#1E2A25;
+   }
+[data-palette="spa"] [data-scene="dusk"] {
+    --sc-a:#21303A;
+    --sc-b:#33505A;
+    --sc-c:#5D7F77;
+    --sc-fg:#E6F0EE;
+    --sc-muted:rgb(230 240 238 / .74);
+    --sc-card:rgb(255 255 255 / .09);
+    --sc-line:rgb(255 255 255 / .16);
+    --sc-accent:#A9D0C4;
+    --sc-on:#1B2A2E;
+   }
+[data-palette="jewel"] {
+    --paper:#F1F0F8;
+    --surface:#FFFFFF;
+    --ink:#15162B;
+    --muted:#585A7A;
+    --line:#DCDBEB;
+    --sea:#00897B;
+    --gold:#E3A000;
+    --dawn:#D81B60;
+    --dusk:#5E35B1;
+    --heat-0:#E4E3F0;
+    --glow-a:rgb(94 53 177 / .18);
+    --glow-b:rgb(0 137 123 / .14);
+    --glow-c:rgb(216 27 96 / .12);
+   }
+[data-palette="jewel"] [data-scene="dawn"] {
+    --sc-a:#FF8A5C;
+    --sc-b:#D81B60;
+    --sc-c:#FFC04D;
+    --sc-fg:#FFFFFF;
+    --sc-muted:rgb(255 255 255 / .84);
+    --sc-card:rgb(255 255 255 / .16);
+    --sc-line:rgb(255 255 255 / .28);
+    --sc-accent:#FFFFFF;
+    --sc-on:#B0124C;
+   }
+[data-palette="jewel"] [data-scene="sea"] {
+    --sc-a:#00B894;
+    --sc-b:#0B6E8A;
+    --sc-c:#3DDC97;
+    --sc-fg:#FFFFFF;
+    --sc-muted:rgb(255 255 255 / .84);
+    --sc-card:rgb(255 255 255 / .16);
+    --sc-line:rgb(255 255 255 / .28);
+    --sc-accent:#FFFFFF;
+    --sc-on:#075E6E;
+   }
+[data-palette="jewel"] [data-scene="gold"] {
+    --sc-a:#0E0B2E;
+    --sc-b:#2B0F5C;
+    --sc-c:#8E2C6B;
+    --sc-fg:#FFF3D6;
+    --sc-muted:rgb(255 243 214 / .76);
+    --sc-card:rgb(255 255 255 / .09);
+    --sc-line:rgb(255 255 255 / .16);
+    --sc-accent:#FFC233;
+    --sc-on:#2A1800;
+   }
+[data-palette="jewel"] [data-scene="dusk"] {
+    --sc-a:#2A1171;
+    --sc-b:#6A2BD9;
+    --sc-c:#C2389A;
+    --sc-fg:#FFFFFF;
+    --sc-muted:rgb(255 255 255 / .82);
+    --sc-card:rgb(255 255 255 / .12);
+    --sc-line:rgb(255 255 255 / .22);
+    --sc-accent:#FFD9F2;
+    --sc-on:#3A0F6E;
+   }
+
+@media (prefers-color-scheme: dark) {
+  [data-palette="pastel"] {
+    --paper:#1A1520;
+    --surface:#251E2C;
+    --ink:#F3EAF4;
+    --muted:#B4A6B9;
+    --line:#3A2F42;
+    --sea:#6FD1B2;
+    --gold:#EBC170;
+    --dawn:#F5A3BF;
+    --dusk:#C2AEF5;
+    --on-tone:#1A1520;
+    --danger:#FF8C9C;
+    --heat-0:#2E2636;
+    --glow-a:rgb(245 163 191 / .14);
+    --glow-b:rgb(194 174 245 / .14);
+    --glow-c:rgb(111 209 178 / .08);
+   }
+  [data-palette="pastel"] [data-scene="dawn"] {
+    --sc-a:#3A1F2D;
+    --sc-b:#5C2C42;
+    --sc-c:#6A4630;
+    --sc-fg:#FFE8F0;
+    --sc-muted:rgb(255 232 240 / .72);
+    --sc-card:rgb(255 255 255 / .09);
+    --sc-line:rgb(255 255 255 / .16);
+    --sc-accent:#F5A3BF;
+    --sc-on:#2A0F1C;
+   }
+  [data-palette="pastel"] [data-scene="sea"] {
+    --sc-a:#12302C;
+    --sc-b:#164545;
+    --sc-c:#24503B;
+    --sc-fg:#DDF7EE;
+    --sc-muted:rgb(221 247 238 / .72);
+    --sc-card:rgb(255 255 255 / .09);
+    --sc-line:rgb(255 255 255 / .16);
+    --sc-accent:#6FD1B2;
+    --sc-on:#0B2420;
+   }
+  [data-palette="pastel"] [data-scene="gold"] {
+    --sc-a:#241B3A;
+    --sc-b:#3B2B5E;
+    --sc-c:#5E4A2E;
+    --sc-fg:#F4EDFF;
+    --sc-muted:rgb(244 237 255 / .72);
+    --sc-card:rgb(255 255 255 / .09);
+    --sc-line:rgb(255 255 255 / .16);
+    --sc-accent:#EBC170;
+    --sc-on:#241B05;
+   }
+  [data-palette="pastel"] [data-scene="dusk"] {
+    --sc-a:#251E45;
+    --sc-b:#3E3170;
+    --sc-c:#5C3557;
+    --sc-fg:#F0EBFF;
+    --sc-muted:rgb(240 235 255 / .74);
+    --sc-card:rgb(255 255 255 / .09);
+    --sc-line:rgb(255 255 255 / .16);
+    --sc-accent:#C2AEF5;
+    --sc-on:#1E1640;
+   }
+  [data-palette="luxe"] {
+    --paper:#1C1512;
+    --surface:#271E1A;
+    --ink:#F5EAE3;
+    --muted:#BBA49A;
+    --line:#3D2F29;
+    --sea:#D9909A;
+    --gold:#DDB97E;
+    --dawn:#E8A895;
+    --dusk:#B58A7C;
+    --on-tone:#1C1512;
+    --danger:#FF8C9C;
+    --heat-0:#33271F;
+    --glow-a:rgb(217 144 154 / .12);
+    --glow-b:rgb(221 185 126 / .10);
+    --glow-c:rgb(181 138 124 / .08);
+   }
+  [data-palette="luxe"] [data-scene="dawn"] {
+    --sc-a:#3A231D;
+    --sc-b:#5A3229;
+    --sc-c:#6B4A2E;
+    --sc-fg:#FCEDE6;
+    --sc-muted:rgb(252 237 230 / .72);
+    --sc-card:rgb(255 255 255 / .09);
+    --sc-line:rgb(255 255 255 / .16);
+    --sc-accent:#E8A895;
+    --sc-on:#2A140F;
+   }
+  [data-palette="luxe"] [data-scene="sea"] {
+    --sc-a:#36211F;
+    --sc-b:#58302F;
+    --sc-c:#6A4A3A;
+    --sc-fg:#FBEBEA;
+    --sc-muted:rgb(251 235 234 / .72);
+    --sc-card:rgb(255 255 255 / .09);
+    --sc-line:rgb(255 255 255 / .16);
+    --sc-accent:#D9909A;
+    --sc-on:#2A1213;
+   }
+  [data-palette="spa"] {
+    --paper:#141A17;
+    --surface:#1D2521;
+    --ink:#E9EFE9;
+    --muted:#A3B2A8;
+    --line:#2E3A33;
+    --sea:#86B893;
+    --gold:#D8C08A;
+    --dawn:#DDA486;
+    --dusk:#8FB3BF;
+    --on-tone:#141A17;
+    --danger:#FF8C9C;
+    --heat-0:#25302A;
+    --glow-a:rgb(134 184 147 / .12);
+    --glow-b:rgb(143 179 191 / .10);
+    --glow-c:rgb(216 192 138 / .08);
+   }
+  [data-palette="spa"] [data-scene="dawn"] {
+    --sc-a:#33251D;
+    --sc-b:#4C3528;
+    --sc-c:#4D4A30;
+    --sc-fg:#F6EDE4;
+    --sc-muted:rgb(246 237 228 / .72);
+    --sc-card:rgb(255 255 255 / .09);
+    --sc-line:rgb(255 255 255 / .16);
+    --sc-accent:#DDA486;
+    --sc-on:#2A170D;
+   }
+  [data-palette="spa"] [data-scene="sea"] {
+    --sc-a:#16281F;
+    --sc-b:#1F3D33;
+    --sc-c:#2F4A30;
+    --sc-fg:#E2F2E6;
+    --sc-muted:rgb(226 242 230 / .72);
+    --sc-card:rgb(255 255 255 / .09);
+    --sc-line:rgb(255 255 255 / .16);
+    --sc-accent:#86B893;
+    --sc-on:#0E1F15;
+   }
+  [data-palette="jewel"] {
+    --paper:#0F1020;
+    --surface:#1A1B33;
+    --ink:#EEEEFB;
+    --muted:#A4A6C8;
+    --line:#2C2E52;
+    --sea:#1DE9B6;
+    --gold:#FFC233;
+    --dawn:#FF4F8B;
+    --dusk:#9C6BFF;
+    --on-tone:#0F1020;
+    --danger:#FF8C9C;
+    --heat-0:#24264A;
+    --glow-a:rgb(156 107 255 / .18);
+    --glow-b:rgb(29 233 182 / .10);
+    --glow-c:rgb(255 79 139 / .10);
+   }
+}

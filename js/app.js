@@ -109,6 +109,39 @@ function startRoutine() {
   openRunner({ onDone: () => route() });
 }
 
+// ---------------- Themes ----------------
+const PALETTES = [
+  { id: 'original', name: 'Twilight', note: 'Peach and aqua mornings, indigo and gold nights',
+    sw: [['#FFE4D2', '#FFBFD5'], ['#CFF5EA', '#B9DEFA'], ['#1A1636', '#3E2659'], ['#201C4A', '#4A3A96']] },
+  { id: 'pastel', name: 'Soft pastel', note: 'Blush, mint and lilac, light all day',
+    sw: [['#FFEAF1', '#FFD3E3'], ['#E2F7EF', '#D8ECFB'], ['#F1EAFF', '#E2D5FF'], ['#EEE8FF', '#DCD2FF']] },
+  { id: 'luxe', name: 'Warm luxe', note: 'Rose gold and champagne, cocoa nights',
+    sw: [['#FBE8DF', '#F2CFC6'], ['#F7E6E1', '#EACBC4'], ['#2A1D19', '#4A3027'], ['#38261F', '#5D3F35']] },
+  { id: 'spa', name: 'Fresh spa', note: 'Sage, clay and sand, forest nights',
+    sw: [['#F6EEE3', '#EFDACB'], ['#E7F0E5', '#D3E5DB'], ['#1E2A25', '#2F4037'], ['#21303A', '#33505A']] },
+  { id: 'jewel', name: 'Bold jewel', note: 'Ruby, emerald and amethyst',
+    sw: [['#FF8A5C', '#D81B60'], ['#00B894', '#0B6E8A'], ['#0E0B2E', '#2B0F5C'], ['#2A1171', '#6A2BD9']] },
+];
+
+function applyPalette(id = state.settings.palette || 'original') {
+  const root = document.documentElement;
+  if (id === 'original') delete root.dataset.palette;
+  else root.dataset.palette = id;
+  const paper = getComputedStyle(root).getPropertyValue('--paper').trim();
+  if (paper) $$('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', paper));
+}
+
+function themePicker() {
+  const cur = state.settings.palette || 'original';
+  return `<div class="palettes" role="radiogroup" aria-label="Theme">${PALETTES.map(
+    (p) => `<label class="palette">
+      <input type="radio" name="palette" value="${p.id}" ${p.id === cur ? 'checked' : ''}>
+      <span class="pal-swatch" aria-hidden="true">${p.sw.map(([a, b]) => `<i style="background:linear-gradient(160deg,${a},${b})"></i>`).join('')}</span>
+      <span class="pal-text"><span class="pal-name">${p.name}</span><span class="pal-note">${p.note}</span></span>
+    </label>`
+  ).join('')}</div>`;
+}
+
 // ---------------- Settings ----------------
 function renderSettings(el) {
   const s = state.settings;
@@ -119,6 +152,12 @@ function renderSettings(el) {
 
   el.innerHTML = `
     <section class="hero tight"><h1 class="display">Settings</h1></section>
+
+    <section class="block">
+      <h2 class="h2">Theme</h2>
+      ${themePicker()}
+      <p class="muted small">Light or dark follows your iPhone’s appearance setting.</p>
+    </section>
 
     <section class="block">
       <h2 class="h2">Gym days</h2>
@@ -205,6 +244,14 @@ function renderSettings(el) {
     save();
     if (msg) toast(msg);
   };
+
+  el.querySelectorAll('input[name=palette]').forEach((r) =>
+    r.addEventListener('change', () => {
+      s.palette = r.value;
+      applyPalette(r.value);
+      commit();
+    })
+  );
 
   el.querySelectorAll('[data-gym]').forEach((c) =>
     c.addEventListener('change', () => {
@@ -562,6 +609,8 @@ function showLock(message = '') {
     }
   });
 }
+
+applyPalette();
 
 (async () => {
   try {

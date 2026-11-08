@@ -9,6 +9,7 @@ It includes:
 - **Drying timers between steps:** tap Done and a countdown starts. It chimes and moves to the next step by itself. Wait times come from your plan and can be adjusted in Settings > Drying times.
 - **Morning and evening tracking:** each day has a morning tick (your main post-gym routine), an evening tick (retinal or rest night), and a pre-gym tick on gym days. A day counts towards your streak when both morning and evening are done. Routines you did without the app can be ticked by hand. The heatmap splits each day into a morning half and an evening half.
 - **Weekly skin notes.**
+- **Five colour themes:** Twilight, Soft pastel, Warm luxe, Fresh spa and Bold jewel, each with a dark-mode version. Choose in Settings > Theme.
 - **Progress photos:** photos per area with a faint overlay of the last shot so angles match, plus a before/after slider.
 - **AI chat:** an Ask tab that knows your plan, today's weather and your recent log (uses your Anthropic API key).
 - **Reminders:** via your iPhone Calendar (simple) or real push notifications sent by a GitHub Action (advanced).
@@ -135,7 +136,8 @@ Logs, notes and photos live in the app's storage on your phone. Use **Settings >
 
 ```
 index.html               app shell
-css/styles.css           styles (light and dark)
+css/styles.css           styles (light and dark), Twilight theme
+css/themes.css           the other four themes
 js/plan.js               routine logic
 js/lock.js               passphrase unlock
 plan.enc.json            your routine, encrypted (safe to upload)

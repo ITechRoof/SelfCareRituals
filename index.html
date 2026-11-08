@@ -15,6 +15,14 @@
   <link rel="icon" href="icons/icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/themes.css">
+  <script>
+    // Apply the chosen theme before anything draws, so there's no flash of the wrong colours.
+    try {
+      var p = JSON.parse(localStorage.getItem('skin-ritual:v1') || '{}').settings || {};
+      if (p.palette && p.palette !== 'original') document.documentElement.dataset.palette = p.palette;
+    } catch (e) {}
+  </script>
 </head>
 <body>
   <main id="view" tabindex="-1"></main>
