@@ -1,0 +1,66 @@
+{
+  "timezone": "Europe/London",
+  "windowMinutes": 15,
+  "reminders": [
+    {
+      "time": "07:15",
+      "days": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri"
+      ],
+      "title": "Pre-gym skincare",
+      "body": "Time for your pre-gym routine.",
+      "url": "./?start=1"
+    },
+    {
+      "time": "10:30",
+      "days": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat",
+        "Sun"
+      ],
+      "title": "Morning skincare",
+      "body": "Time for your morning routine.",
+      "url": "./?start=1"
+    },
+    {
+      "time": "21:30",
+      "days": [
+        "Mon",
+        "Thu"
+      ],
+      "title": "Evening skincare",
+      "body": "Time for tonight’s routine.",
+      "url": "./?start=1"
+    },
+    {
+      "time": "21:30",
+      "days": [
+        "Tue",
+        "Wed",
+        "Fri",
+        "Sat",
+        "Sun"
+      ],
+      "title": "Evening skincare",
+      "body": "Time for tonight’s routine.",
+      "url": "./?start=1"
+    },
+    {
+      "time": "10:00",
+      "days": [
+        "Sun"
+      ],
+      "title": "Progress photos",
+      "body": "Weekly photos in the same light and angle.",
+      "url": "./?tab=photos"
+    }
+  ]
+}

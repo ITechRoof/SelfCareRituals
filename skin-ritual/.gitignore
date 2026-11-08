@@ -1,0 +1,4 @@
+# Your routine in plain text. Never upload this.
+plan.private.mjs
+.DS_Store
+node_modules/
