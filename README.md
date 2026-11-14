@@ -12,7 +12,7 @@ Skin Ritual knows your routine: which products to use, in what order, how much o
 - **Adjusts for the weather:** summer or winter care, based on today's forecast where you are.
 - **Tracks your progress:** morning and evening ticks, streaks, a heatmap of your history and weekly skin notes.
 - **Keeps progress photos** with a guide overlay so every photo is taken at the same angle, plus a before-and-after slider.
-- **Answers questions** about your routine through an AI chat that knows your plan.
+- **A personal skin coach** that learns your concerns and products, and builds a routine around what you already own.
 - **Reminds you** with notifications at routine time.
 
 ## Getting started
@@ -76,8 +76,9 @@ You can also choose **which evenings are retinal nights**. The others become res
 - **Streak:** the number of days in a row with both your morning and evening routines done.
 - **Last 30 days:** how many mornings and evenings you've completed.
 - **This week:** a tick for each morning and evening. **Tap a circle** to tick a routine you did without the app.
-- **Heatmap:** your last few months at a glance. The top half of each square is the morning and the bottom half is the evening. **Tap a day** to change its ticks.
+- **Heatmap:** your last few months at a glance, newest week on the left. The top half of each square is the morning and the bottom half is the evening. **Tap a day** to change its ticks.
 - **Skin notes:** a few words each week about how your skin is doing.
+- **Timeline:** every day, newest first, grouped by week with that week's skin note. Each day shows which routines you did, when, how long they took and any skipped steps. Tap a day to change its ticks, and **Show earlier** to go further back.
 
 ### Photos
 
@@ -87,11 +88,24 @@ You can also choose **which evenings are retinal nights**. The others become res
 
 Same spot, same light and same time of day make changes easiest to see. Photos stay on your phone.
 
-### Ask
+### Ask: your skin coach
 
-Ask anything about your routine. For example: *"Why do I wait between steps?"* or *"My skin is stinging today, what should I change?"*. It knows your plan, today's weather and what you've logged recently.
+The skin coach is an AI consultant for your skin. Tap **Start a consultation** and it gets to know you, one or two questions at a time:
 
-This needs your own Anthropic API key, from **console.anthropic.com**. Add it in **Settings > AI chat**. It stays on your phone.
+- your skin type and concerns, such as tanning, acne, pores, pigmentation or sensitivity
+- **every product you use**, from cleanser to sunscreen, and how they suit you
+- your budget, how much time you have, and anything it should be careful about, like pregnancy or prescription treatments
+
+**How it suggests a routine:**
+- **What you already own comes first,** so nothing goes to waste. It only suggests buying something when there's a real gap, and explains why.
+- **Strong ingredients get clear guidance:** retinal, retinol, acids, vitamin C and benzoyl peroxide, including how to start slowly, what not to mix, and when to see a pharmacist or dermatologist.
+
+**Making it your routine:** the suggested routine appears as a card. Tap **Approve** and it becomes your routine, with every step, amount and drying time ready for **Start routine**. Not sure yet? Tap **Not yet** and keep chatting.
+
+- **Your skin profile and products** are remembered between conversations. Check them with the **My skin profile** and **My products** buttons.
+- **Changed your mind about a new routine?** Go to **Settings > My routine > Go back to my original plan**.
+- **Skincare only:** the coach only talks about skincare.
+- **Internet needed:** it needs a connection, and there's a monthly message limit.
 
 ### Settings
 
@@ -111,7 +125,7 @@ This needs your own Anthropic API key, from **console.anthropic.com**. Add it in
 - **Your routine** is stored encrypted and can only be opened with your passphrase.
 - **Your logs, notes, photos and settings stay on your phone.** If someone else uses Skin Ritual on the same phone, their data is kept separate from yours.
 - **Weather lookups** send only your approximate location.
-- **AI chat** messages go directly from your phone to Anthropic, using your own key.
+- **Skin coach** conversations go directly from your phone to Anthropic to get answers. Your skin profile and product list are stored on your phone.
 - **Notifications** use a phone address that only lets reminders reach you. It isn't a password.
 
 Because everything is kept on your phone, **export a backup now and then** (Settings > Backup).

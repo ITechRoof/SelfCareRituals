@@ -57,7 +57,7 @@ function showOverview(host, close) {
           <ul class="ed-steps">${r.steps
             .map(
               (st) => `<li><button class="ed-step ${st.off ? 'is-off' : ''}" ${st.added ? `data-added="${id}:${st.id}"` : `data-step="${st.id}"`}>
-                <span class="ed-name">${esc(st.product)}${st.only ? ` <span class="ed-tag">${st.only} only</span>` : ''}</span>
+                <span class="ed-name">${esc(st.product)}${st.only ? ` <span class="ed-tag">${st.only} only</span>` : ''}${st.days ? ` <span class="ed-tag">${st.days.map((d) => DAY_SHORT[d]).join(', ')} only</span>` : ''}</span>
                 <span class="ed-meta">${st.off ? 'Turned off' : esc(portionText(st.portion))}</span>
                 ${st.added ? '<span class="ed-badge">Added</span>' : st.edited ? '<span class="ed-badge">Changed</span>' : ''}
               </button></li>`

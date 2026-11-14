@@ -7,16 +7,81 @@ import { skinDate, DAY_START_HOUR } from './util.js';
 export let ROUTINES = {}; // the routine in use: the plan plus this person's own edits
 export let PLAN_TEXT = '';
 export let ACCOUNT = null; // { key, displayName } for buddy nudges
-let BASE = {}; // the plan exactly as encrypted by the admin
+let ADMIN = {}; // the plan exactly as encrypted by the admin
+let BASE = {}; // the routine edits are layered on: the admin plan, or one approved from the skin coach
 
 export function setPlan(plan) {
-  BASE = plan.routines;
+  ADMIN = plan.routines;
+  BASE = ADMIN;
   PLAN_TEXT = plan.text;
   ACCOUNT = plan.account || null;
   applyEdits({});
 }
 
 export const baseRoutines = () => BASE;
+
+// A routine approved from the skin coach replaces the admin plan on this phone.
+export function usePersonalPlan(pp) {
+  BASE = pp?.routines || ADMIN;
+}
+export const usingPersonalPlan = () => BASE !== ADMIN;
+
+const SLOTS = {
+  preGym: { slot: 'am', tone: 'dawn', blurb: 'Quick routine before exercise or heading out' },
+  postGym: { slot: 'am', tone: 'sea', blurb: 'Your full morning routine', altName: 'Main morning' },
+  retinal: { slot: 'pm', tone: 'gold', blurb: 'Treatment evenings' },
+  rest: { slot: 'pm', tone: 'dusk', blurb: 'Other evenings' },
+};
+const FROM_COACH = { pre_gym: 'preGym', main_morning: 'postGym', treatment_evening: 'retinal', regular_evening: 'rest' };
+
+// Turns the skin coach's proposal into the app's routine format.
+export function routinesFromProposal(p, tag = 'x') {
+  const out = {};
+  for (const [key, id] of Object.entries(FROM_COACH)) {
+    const src = p.routines?.[key] || { name: SLOTS[id].altName || id, steps: [] };
+    out[id] = {
+      id,
+      ...SLOTS[id],
+      name: src.name || id,
+      reminders: Array.isArray(src.reminders) ? src.reminders.slice(0, 4) : [],
+      steps: (src.steps || []).map((st, i) => ({
+        id: `ai-${tag}-${id}-${i}`,
+        product: String(st.product || 'Step').slice(0, 120),
+        area: st.area || 'Face',
+        portion: { all: st.amount || '' },
+        how: st.how || '',
+        ...(st.wait_seconds > 0 ? { wait: { summer: Math.min(+st.wait_seconds, 900), winter: Math.min(+st.wait_seconds, 900), label: `Let the ${st.product} absorb` } } : {}),
+        ...(st.season === 'summer' || st.season === 'winter' ? { only: st.season } : {}),
+      })),
+    };
+    if (!out[id].steps.length) out[id].steps.push({ id: `ai-${tag}-${id}-0`, product: 'Rinse with water', area: 'Face', portion: { all: '' }, how: '' });
+  }
+  const days = (p.retinal_days || []).filter((d) => d >= 0 && d <= 6);
+  out.retinal.days = [...new Set(days)].sort();
+  out.rest.days = [0, 1, 2, 3, 4, 5, 6].filter((d) => !out.retinal.days.includes(d));
+  return out;
+}
+
+// The routine actually in use, in words (for the skin coach).
+export function routineInWords() {
+  const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return ROUTINE_ORDER.filter((id) => ROUTINES[id])
+    .map((id) => {
+      const r = ROUTINES[id];
+      const when = r.days ? ` (${r.days.map((d) => names[d]).join(', ') || 'no days'})` : '';
+      const steps = r.steps
+        .filter((st) => !st.off)
+        .map((st, i) => {
+          const p = st.portion || {};
+          const amt = p.summer !== undefined || p.winter !== undefined ? `summer: ${p.summer ?? p.all}, winter: ${p.winter ?? p.all}` : p.all || '';
+          const wait = st.wait ? `, then wait ${Math.round((st.wait.winter || st.wait.summer) / 60 * 10) / 10} min` : '';
+          return `  ${i + 1}. ${st.product}${amt ? ` (${amt})` : ''}${st.area ? ` on ${st.area}` : ''}${st.only ? ` [${st.only} only]` : ''}${st.days ? ` [${st.days.map((d) => names[d]).join(', ')} only]` : ''}${wait}`;
+        })
+        .join('\n');
+      return `${r.name}${when}:\n${steps}`;
+    })
+    .join('\n\n');
+}
 export const findBaseStep = (id) => {
   for (const r of Object.values(BASE)) for (const st of r.steps) if (st.id === id) return st;
   return null;
@@ -119,14 +184,15 @@ export function suggestRoutine(now, settings, todaysLogs) {
 
 export function routineLabel(id, date = skinDate(), settings) {
   const r = ROUTINES[id];
-  if (id === 'postGym' && settings && !settings.gymDays.includes(date.getDay())) return r.altName;
-  return r.name;
+  if (id === 'postGym' && settings && !settings.gymDays.includes(date.getDay())) return r.altName || r.name;
+  return r.dayNames?.[date.getDay()] || r.name;
 }
 
 // Resolve a routine's steps for a season, applying any swaps.
-export function resolveSteps(routineId, season, swaps = {}, waits = {}) {
+// A step with `days: [3]` only appears on those weekdays (0 = Sunday).
+export function resolveSteps(routineId, season, swaps = {}, waits = {}, date = skinDate()) {
   return ROUTINES[routineId].steps
-    .filter((s) => !s.off && (!s.only || s.only === season))
+    .filter((s) => !s.off && (!s.only || s.only === season) && (!s.days || s.days.includes(date.getDay())))
     .map((s) => {
       const swapped = swaps[s.id] && s.alt;
       return {

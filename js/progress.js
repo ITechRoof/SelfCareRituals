@@ -15,12 +15,13 @@ export function renderProgress(el) {
   const gymDays = state.settings.gymDays;
 
   // ---- Heatmap: each day split into a morning half and an evening half ----
+  // Newest week on the left, going back in time to the right.
   let cells = '';
   let months = '';
   let lastMonth = -1;
   for (let w = 0; w < WEEKS; w++) {
-    const monday = addDays(first, w * 7);
-    const m = monday.getMonth();
+    const monday = addDays(thisWeek, -w * 7);
+    const m = addDays(monday, 6).getMonth();
     if (m !== lastMonth) months += `<span class="hm-month" style="grid-column:${w + 2} / span 3;grid-row:1">${MONTH_SHORT[m]}</span>`;
     lastMonth = m;
     for (let d = 0; d < 7; d++) {
@@ -66,7 +67,6 @@ export function renderProgress(el) {
   const pastNotes = Object.entries(state.notes)
     .filter(([k, v]) => k !== noteKey && v.trim())
     .sort((a, b) => (a[0] < b[0] ? 1 : -1));
-  const recent = [...state.logs].sort((a, b) => b.finishedAt - a.finishedAt).slice(0, 8);
 
   el.innerHTML = `
     <section class="hero">
@@ -94,7 +94,7 @@ export function renderProgress(el) {
     </section>
 
     <section class="block">
-      <h2 class="h2">Last ${WEEKS} weeks</h2>
+      <h2 class="h2">Last ${WEEKS} weeks <span class="muted small">newest first</span></h2>
       <div class="heat-scroll">
         <div class="heat" style="grid-template-columns:24px repeat(${WEEKS},minmax(15px,1fr))">
           ${['Mon', '', 'Wed', '', 'Fri', '', 'Sun'].map((d, i) => `<span class="hm-day" style="grid-row:${i + 2}">${d}</span>`).join('')}
@@ -121,17 +121,8 @@ export function renderProgress(el) {
     </section>
 
     <section class="block">
-      <h2 class="h2">Recent</h2>
-      ${
-        recent.length
-          ? `<ul class="log-list">${recent
-              .map(
-                (l) => `<li><span>${esc(routineLabel(l.routine, new Date(l.finishedAt), state.settings))}${l.manual ? ' <span class="muted">(ticked)</span>' : ''}</span>
-                <span class="muted">${fmtDate(parseKey(l.date))}${timeEstimated(l) ? '' : `, ${fmtClock(l.finishedAt)}`}</span></li>`
-              )
-              .join('')}</ul>`
-          : '<p class="muted">Finish a routine and it will show up here.</p>'
-      }
+      <h2 class="h2">Timeline</h2>
+      ${timeline(todayKey)}
     </section>`;
 
   const rerender = () => renderProgress(el);
@@ -146,8 +137,65 @@ export function renderProgress(el) {
   );
   el.querySelectorAll('.cell[data-day]').forEach((c) => c.addEventListener('click', () => openDay(c.dataset.day, rerender)));
 
-  const scroller = el.querySelector('.heat-scroll');
-  scroller.scrollLeft = scroller.scrollWidth;
+  el.querySelectorAll('[data-tl-day]').forEach((b) => b.addEventListener('click', () => openDay(b.dataset.tlDay, rerender)));
+  el.querySelector('[data-tl-more]')?.addEventListener('click', () => {
+    timelineDays += 14;
+    rerender();
+    el.querySelector('.timeline')?.lastElementChild?.scrollIntoView({ block: 'nearest' });
+  });
+}
+
+// ---- Timeline: every day, newest first ----
+let timelineDays = 14;
+
+const ORDER = { preGym: 0, postGym: 1, retinal: 2, rest: 2 };
+
+function entry(l, day) {
+  const name = routineLabel(l.routine, day, state.settings);
+  const mins = l.startedAt && l.finishedAt && !l.manual ? Math.max(1, Math.round((l.finishedAt - l.startedAt) / 60000)) : null;
+  const details = [
+    timeEstimated(l) ? '' : fmtClock(l.finishedAt),
+    mins ? `${mins} min` : '',
+    l.manual ? 'ticked' : '',
+    l.skipped?.length ? `skipped ${l.skipped.length}` : '',
+    l.swaps?.length ? 'gentler swap' : '',
+  ].filter(Boolean);
+  const kind = l.routine === 'preGym' ? 'pre' : l.routine === 'postGym' ? 'am' : l.routine;
+  return `<li class="tl-entry"><i class="tl-dot ${kind}"></i><span>${esc(name)}</span><span class="muted small">${details.map(esc).join(' · ')}</span></li>`;
+}
+
+function timeline(todayKey) {
+  if (!state.logs.length) return '<p class="muted">Finish a routine and it will show up here.</p>';
+  const earliest = state.logs.reduce((m, l) => (l.date < m ? l.date : m), todayKey);
+  const out = [];
+  let d = parseKey(todayKey);
+  let shown = 0;
+  let lastWeek = null;
+  const yesterday = dateKey(addDays(parseKey(todayKey), -1));
+  while (shown < timelineDays && dateKey(d) >= earliest) {
+    const k = dateKey(d);
+    const wk = dateKey(weekStart(d));
+    if (wk !== lastWeek) {
+      const note = (state.notes[wk] || '').trim();
+      out.push(`<li class="tl-week"><span>Week of ${fmtDate(parseKey(wk))}</span>${note ? `<p class="tl-note">${esc(note)}</p>` : ''}</li>`);
+      lastWeek = wk;
+    }
+    const logs = logsOn(k).sort((a, b) => (ORDER[a.routine] ?? 3) - (ORDER[b.routine] ?? 3) || a.finishedAt - b.finishedAt);
+    const s = dayStatus(k);
+    const label = k === todayKey ? 'Today' : k === yesterday ? 'Yesterday' : fmtDate(d);
+    const status = s.am && s.pm ? 'both' : s.am || s.pm ? 'half' : 'none';
+    out.push(`<li class="tl-day ${status}">
+      <button class="tl-head" data-tl-day="${k}" aria-label="Change ticks for ${fmtDate(d)}">
+        <span class="tl-date">${label}</span>
+        <span class="tl-sum">${status === 'both' ? 'Morning and evening' : s.am ? 'Morning only' : s.pm ? 'Evening only' : k === todayKey ? 'Not yet' : 'Missed'}</span>
+      </button>
+      ${logs.length ? `<ul class="tl-entries">${logs.map((l) => entry(l, d)).join('')}</ul>` : ''}
+    </li>`);
+    d = addDays(d, -1);
+    shown++;
+  }
+  const more = dateKey(d) >= earliest;
+  return `<ol class="timeline">${out.join('')}</ol>${more ? '<div class="row-actions"><button class="ghost" data-tl-more>Show earlier</button></div>' : ''}`;
 }
 
 function isOn(key, slot) {
